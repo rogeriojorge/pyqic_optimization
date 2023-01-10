@@ -41,41 +41,41 @@ def initial_configuration(nphi=131,order = 'r2'):
     return Qic(omn_method = omn_method, k_buffer=k_buffer, rc=rc,zs=zs, nfp=nfp, B0_vals=B0_vals, d_svals=d_svals, nphi=nphi, omn=True, B2c_cvals=B2c_cvals, B2s_svals=B2s_svals, order=order, d_over_curvature=d_over_curvature, B2c_svals=B2c_svals, B2s_cvals=B2s_cvals)
 
 def optimized_configuration(nphi=131,order = 'r2'):
-    rc      = [ 1.0,0.0,-0.19723768011222192,0.0,-0.0033985927586399206,0.0,0.001188229120486172 ]
-    zs      = [ 0.0,0.0,-0.1443012447143185,0.0,-0.004440655196058562,0.0,-0.00011745921347312632 ]
-    B0_vals = [ 1.0,0.20451082571596524 ]
+    rc      = [ 1.0,0.0,-0.1952269528958992,0.0,-0.003679557253855037,0.0,0.00104560102148734 ]
+    zs      = [ 0.0,0.0,-0.13568210642932976,0.0,-0.004538485857647571,0.0,-0.000396242966598079 ]
+    B0_vals = [ 1.0,0.19758542750189442 ]
     omn_method ='non-zone'
     k_buffer = 3
-    d_over_curvature   = 0.6503556225285828
-    d_svals = [ 0.0,0.0021453885350019948,0.006421068459924151,0.019415598371449034 ]
+    d_over_curvature   = 0.6431371560304705
+    d_svals = [ 0.0,0.004418656707361355,-0.017996627846191958,0.012971669955594005 ]
     nfp     = 1
-    iota    =  -0.5053918535299964
-    B2s_svals = [ 0.0,0.06419657126582455,0.005305886379085124,0.01542637793760189 ]
-    B2c_cvals = [ 0.24082770898419342,0.017178206256682788,0.00211109130815362 ]
-    B2s_cvals = [ 0.19220962640346062,0.015900291094018353,0.015132252008301327 ]
-    B2c_svals = [ 0.0,0.5084386277822914,0.012258988846692458,0.006842184458937944 ]
+    iota    =  -0.5060272272011431
+    B2s_svals = [ 0.0,0.034567604957762704,0.0032791380599167556,0.0394101482116015 ]
+    B2c_cvals = [ 0.0027589829211294983,0.08501172212803021,0.005524097974274205 ]
+    B2s_cvals = [ -0.9698604260457117,-0.057737609310558526,0.011258762559558334 ]
+    B2c_svals = [ 0.0,0.6519097597978671,0.012127167366647,0.005977867267942957 ]
     p2      =  0.0
-    # B20QI_deviation_max = 0.7724472436695234
-    # B2cQI_deviation_max = 1.5878762401955058
-    # B2sQI_deviation_max = 1.2946414542314466
-    # Max |X20| = 0.6089023938728432
-    # Max |Y20| = 2.5813821514861703
-    # gradgradB inverse length: 3.720599423080629
-    # d2_volume_d_psi2 = 228.53167239983208
-    # max curvature'(0): 2.647115604886152
-    # max d'(0): 1.7947457196006908
-    # max gradB inverse length: 2.070297376962882
-    # Max elongation = 5.511170121630197
-    # Initial objective = 47.57231770408526
-    # Final objective = 34.810129867834
+    # B20QI_deviation_max = 0.4065299913318574
+    # B2cQI_deviation_max = 1.4002983676859149
+    # B2sQI_deviation_max = 1.293073791546576
+    # Max |X20| = 1.740966804974397
+    # Max |Y20| = 7.5362131103073144
+    # gradgradB inverse length: 4.355907198707649
+    # d2_volume_d_psi2 = 55.800197830335556
+    # max curvature'(0): 2.670126417578986
+    # max d'(0): 1.724586774580363
+    # max gradB inverse length: 2.145068747027901
+    # Max elongation = 5.455737078992341
+    # Initial objective = 29.84022219457265
+    # Final objective = 29.023878686671942
     return Qic(omn_method = omn_method, k_buffer=k_buffer, rc=rc,zs=zs, nfp=nfp, B0_vals=B0_vals, d_svals=d_svals, nphi=nphi, omn=True, B2c_cvals=B2c_cvals, B2s_svals=B2s_svals, order=order, d_over_curvature=d_over_curvature, B2c_svals=B2c_svals, B2s_cvals=B2s_cvals)
 
 def print_results(stel,initial_obj=0):
     print('    rc      = [',','.join([str(elem) for elem in stel.rc]),']')
     print('    zs      = [',','.join([str(elem) for elem in stel.zs]),']')
     print('    B0_vals = [',','.join([str(elem) for elem in stel.B0_vals]),']')
-    print("        omn_method ='"+stel.omn_method+"'")
-    print("        k_buffer =",stel.k_buffer)
+    print("    omn_method ='"+stel.omn_method+"'")
+    print("    k_buffer =",stel.k_buffer)
     print('    d_over_curvature   =',stel.d_over_curvature)
     print('    d_svals = [',','.join([str(elem) for elem in stel.d_svals]),']')
     print('    nfp     =',stel.nfp)
@@ -100,8 +100,8 @@ def print_results(stel,initial_obj=0):
             print('    # Max |X3c1| =',max(abs(stel.X3c1)))
         print('    # gradgradB inverse length:', stel.grad_grad_B_inverse_scale_length)
         print('    # d2_volume_d_psi2 =',stel.d2_volume_d_psi2)
-    print("        # max curvature'(0):", stel.d_curvature_d_varphi_at_0)
-    print("        # max d'(0):", stel.d_d_d_varphi_at_0)
+    print("    # max curvature'(0):", stel.d_curvature_d_varphi_at_0)
+    print("    # max d'(0):", stel.d_d_d_varphi_at_0)
     print('    # max gradB inverse length:', np.max(stel.inv_L_grad_B))
     print('    # Max elongation =',stel.max_elongation)
     if not initial_obj==0:
@@ -131,7 +131,7 @@ def obj(stel):
 
 def main():
     # stel = initial_configuration()
-    stel = optimized_configuration(151)
+    stel = optimized_configuration(201)
     initial_obj = obj(stel)
 
     parameters_to_change = (['zs(2)','B0(1)','ds(1)','B2ss(1)','B2cc(0)','B2cs(1)','B2sc(0)','d_over_curvature',
@@ -143,7 +143,7 @@ def main():
     plot_results(stel)
 
     obj_array = []
-    method = 'Nelder-Mead'
+    method = 'Nelder-Mead' # 'BFGS' #'Nelder-Mead'
     maxiter = 2000
     maxfev  = 2000
     res = minimize(fun, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array), method=method, tol=1e-3, options={'maxiter': maxiter, 'maxfev': maxfev, 'disp': True})
@@ -155,10 +155,10 @@ def main():
     # plt.plot(np.log(np.array(obj_array)));plt.ylabel('Log(Objective function)')
     plt.plot(np.array(obj_array));plt.ylabel('Objective function')
 
-    # stel.plot_boundary()
     stel.B_contour(show=False)
-
     plt.show()
+
+    stel.plot_boundary()
 
 if __name__ == "__main__":
     main()
