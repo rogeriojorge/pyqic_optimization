@@ -117,14 +117,17 @@ def fun(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[]):
     return objective_function
 
 def obj(stel):
-    return np.sum(5*stel.B2cQI_deviation**2 + stel.B2sQI_deviation**2 + stel.B20QI_deviation**2 + stel.inv_L_grad_B**2 + stel.grad_grad_B_inverse_scale_length_vs_varphi**2 + 0.05*stel.elongation**2)/stel.nphi + 50*stel.B0_vals[1]**2
+    return np.sum(5*stel.B2cQI_deviation**2 + stel.B2sQI_deviation**2 + stel.B20QI_deviation**2
+                + stel.inv_L_grad_B**2 + stel.grad_grad_B_inverse_scale_length_vs_varphi**2
+                + 0.5*stel.elongation**2
+                + 0.1*stel.get_d_d_d_varphi_at_0**2 + 0.1*stel.get_alpha_deviation**2)/stel.nphi + 50*stel.B0_vals[1]**2
 
 def main():
     # stel = initial_configuration(nfp=3)
     # stel = optimized_configuration_nfp1(151)
     # stel = optimized_configuration_nfp2(151)
     stel = optimized_configuration_nfp3(151)
-    # stel.plot_boundary(r=0.05)
+    # stel.plot_boundary(r=0.01)
     # exit()
 
     initial_obj = obj(stel)
