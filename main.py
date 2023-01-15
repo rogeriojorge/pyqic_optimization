@@ -1,17 +1,25 @@
 #!/usr/bin/env python3
 import os
+import shutil
+import vmecPlot2
+import subprocess
 import numpy as np
 from qic import Qic
+import booz_xform as bx
+from pathlib import Path
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
-from pathlib import Path
+from simsopt.mhd import Vmec, Boozer
+from simsopt.util import MpiPartition
+from neat.fields import Simple
+from neat.tracing import ChargedParticleEnsemble, ParticleEnsembleOrbit_Simple
 try: from optimized_configuration_nfp1 import optimized_configuration_nfp1
 except: pass
 try: from optimized_configuration_nfp2 import optimized_configuration_nfp2
 except: pass
 try: from optimized_configuration_nfp3 import optimized_configuration_nfp3
 except: pass
-
+mpi = MpiPartition()
 this_path = Path(__file__).parent.resolve()
 
 def plot_results(stel):
@@ -117,44 +125,156 @@ def fun(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[]):
     return objective_function
 
 def obj(stel):
-    return np.sum(5*stel.B2cQI_deviation**2 + stel.B2sQI_deviation**2 + stel.B20QI_deviation**2
+    weight_XYZ2 = 0.1
+    weight_B0vals = 300
+    weight_B2c_dev = 100
+    weight_d_at_0 = 0.1
+    weight_B20cs = 0.1
+    weight_elongation = 0.1
+    weight_d = 0.1
+    weight_alpha_diff = 1
+    return np.sum(weight_B2c_dev*(stel.B2cQI_deviation**2 + stel.B2sQI_deviation**2 + stel.B20QI_deviation**2)
                 + stel.inv_L_grad_B**2 + stel.grad_grad_B_inverse_scale_length_vs_varphi**2
-                + 0.5*stel.elongation**2
-                + 0.1*stel.get_d_d_d_varphi_at_0**2 + 0.1*stel.get_alpha_deviation**2)/stel.nphi + 50*stel.B0_vals[1]**2
+                + weight_XYZ2*(stel.X20**2 + stel.X2c**2 + stel.X2s**2
+                             + stel.Y20**2 + stel.Y2c**2 + stel.Y2s**2
+                             + stel.Z20**2 + stel.Z2c**2 + stel.Z2s**2)
+                + weight_B20cs*(stel.B20**2 + stel.B2c**2 + stel.B2s**2)
+                + weight_elongation*stel.elongation**2 + weight_d*stel.d**2 + weight_alpha_diff*(stel.alpha - stel.alpha_no_buffer)**2)/stel.nphi \
+                + weight_B0vals*stel.B0_vals[1]**2 + weight_d_at_0*stel.d_curvature_d_varphi_at_0**2 + weight_d_at_0*stel.d_d_d_varphi_at_0**2
 
-def main():
-    # stel = initial_configuration(nfp=3)
-    # stel = optimized_configuration_nfp1(151)
-    # stel = optimized_configuration_nfp2(151)
-    stel = optimized_configuration_nfp3(151)
-    # stel.plot_boundary(r=0.01)
-    # exit()
-
+def main(nfp=1, refine_optimized=False, nphi=91, maxiter = 3000, show=True):
+    if nfp not in [1,2,3]: raise ValueError('nfp should be 1, 2 or 3.')
+    if refine_optimized:
+        if nfp==1:
+            stel = optimized_configuration_nfp1(nphi)
+        elif nfp==2:
+            stel = optimized_configuration_nfp2(nphi)
+        elif nfp==3:
+            stel = optimized_configuration_nfp3(nphi)
+    else:
+        stel = initial_configuration(nfp=nfp)
     initial_obj = obj(stel)
     initial_dofs = stel.get_dofs()
     parameters_to_change = (['zs(2)','B0(1)','ds(1)','B2cs(1)','B2sc(0)','d_over_curvature',
                              'zs(4)','rc(2)','ds(2)','B2cs(2)','B2sc(1)',
                              'zs(6)','rc(4)','ds(3)','B2cs(3)','B2sc(2)'])
     dofs = [initial_dofs[stel.names.index(parameter)] for parameter in parameters_to_change]
-
-    plot_results(stel)
-
+    if show: plot_results(stel)
     obj_array = []
     method = 'Nelder-Mead'
-    maxiter = 3000
     maxfev  = maxiter
     res = minimize(fun, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array), method=method, tol=1e-3, options={'maxiter': maxiter, 'maxfev': maxfev, 'disp': True})
     print_results(stel, initial_obj)
+    if show:
+        plot_results(stel)
+        plt.figure();plt.xlabel('Function evaluation')
+        plt.plot(np.array(obj_array));plt.ylabel('Objective function')
+        stel.B_contour(show=False)
+        plt.show()
+        # stel.plot_boundary()
+    return stel
 
-    plot_results(stel)
-
-    plt.figure();plt.xlabel('Function evaluation')
-    plt.plot(np.array(obj_array));plt.ylabel('Objective function')
-
-    stel.B_contour(show=False)
-    plt.show()
-
-    # stel.plot_boundary()
+def asses_performance(nfp=1, r=0.1, delete_old=False):
+    if nfp==1:
+        stel = optimized_configuration_nfp1(151)
+    elif nfp==2:
+        stel = optimized_configuration_nfp2(151)
+    elif nfp==3:
+        stel = optimized_configuration_nfp3(151)
+    else:
+        raise ValueError('Only nfp = 1, 2 and 3 allowed.')
+    ## INPUT PARAMETERS
+    OUT_DIR = os.path.join(this_path,f'qic_nfp{nfp}')
+    vmec_output = os.path.join(OUT_DIR,f'wout_qic_nfp{nfp}_000_000000.nc')
+    vmec_input = os.path.join(OUT_DIR,f'input.qic_nfp{nfp}')
+    booz_file = os.path.join(OUT_DIR,f"boozmn_out.nc")
+    neo_executable = '/Users/rogeriojorge/local/STELLOPT/NEO/Release/xneo'
+    neo_in_file = os.path.join(this_path,"neo_in.out")
+    ## CREATE OUTPUT DIRECTORY
+    if delete_old and os.path.isdir(OUT_DIR): shutil.rmtree(OUT_DIR)
+    os.makedirs(OUT_DIR, exist_ok=True)
+    os.chdir(OUT_DIR)
+    ## CREATE VMEC INPUT FILE
+    stel.to_vmec(vmec_input, r=r)
+    ## RUN VMEC
+    try: vmec = Vmec(vmec_output, mpi=mpi)
+    except: vmec = Vmec(vmec_input, mpi=mpi)
+    vmec.indata.ns_array[:3]    = [  16,    51,    101]
+    vmec.indata.niter_array[:3] = [ 4000, 10000, 20000]
+    vmec.indata.ftol_array[:3]  = [1e-12, 1e-13, 1e-14]
+    vmec.run()
+    ## PLOT VMEC
+    try: vmecPlot2.main(file=vmec.output_file, name=f'qic_nfp{nfp}', figures_folder=OUT_DIR)
+    except Exception as e: print(e)
+    ## RUN BOOZ_XFORM
+    b1 = Boozer(vmec, mpol=64, ntor=64)
+    boozxform_nsurfaces=10
+    booz_surfaces = np.linspace(0,1,boozxform_nsurfaces,endpoint=False)
+    b1.register(booz_surfaces)
+    b1.run()
+    b1.bx.write_boozmn(booz_file)
+    ## PLOT BOOZ_XFORM
+    fig = plt.figure(); bx.surfplot(b1.bx, js=1,  fill=False, ncontours=35)
+    plt.savefig(os.path.join(OUT_DIR, f"Boozxform_surfplot_1_qic_nfp{nfp}.pdf"), bbox_inches = 'tight', pad_inches = 0); plt.close()
+    fig = plt.figure(); bx.surfplot(b1.bx, js=int(boozxform_nsurfaces/2), fill=False, ncontours=35)
+    plt.savefig(os.path.join(OUT_DIR, f"Boozxform_surfplot_2_qic_nfp{nfp}.pdf"), bbox_inches = 'tight', pad_inches = 0); plt.close()
+    fig = plt.figure(); bx.surfplot(b1.bx, js=boozxform_nsurfaces-1, fill=False, ncontours=35)
+    plt.savefig(os.path.join(OUT_DIR, f"Boozxform_surfplot_3_qic_nfp{nfp}.pdf"), bbox_inches = 'tight', pad_inches = 0); plt.close()
+    fig = plt.figure(); bx.symplot(b1.bx, helical_detail = True, sqrts=True)
+    plt.savefig(os.path.join(OUT_DIR, f"Boozxform_symplot_qic_nfp{nfp}.pdf"), bbox_inches = 'tight', pad_inches = 0); plt.close()
+    fig = plt.figure(); bx.modeplot(b1.bx, sqrts=True); plt.xlabel(r'$s=\psi/\psi_b$')
+    plt.savefig(os.path.join(OUT_DIR, f"Boozxform_modeplot_qic_nfp{nfp}.pdf"), bbox_inches = 'tight', pad_inches = 0); plt.close()
+    ## RUN NEO
+    shutil.copyfile(neo_in_file,os.path.join(OUT_DIR,'neo_in.out'))
+    bashCommand = f'{neo_executable} out'
+    run_neo = subprocess.Popen(bashCommand.split())
+    run_neo.wait()
+    token = open(os.path.join(OUT_DIR,'neo_out.out'),'r')
+    linestoken=token.readlines()
+    eps_eff=[]
+    s_radial=[]
+    for x in linestoken:
+        s_radial.append(float(x.split()[0])/101)
+        eps_eff.append(float(x.split()[1])**(2/3))
+    token.close()
+    s_radial = np.array(s_radial)
+    eps_eff = np.array(eps_eff)
+    s_radial = s_radial[np.argwhere(~np.isnan(eps_eff))[:,0]]
+    eps_eff = eps_eff[np.argwhere(~np.isnan(eps_eff))[:,0]]
+    fig = plt.figure(figsize=(7, 3), dpi=200)
+    ax = fig.add_subplot(111)
+    plt.plot(s_radial,eps_eff)
+    ax.set_yscale('log')
+    plt.xlabel(r'$s=\psi/\psi_b$', fontsize=12)
+    plt.ylabel(r'$\epsilon_{eff}$', fontsize=14)
+    plt.tight_layout()
+    fig.savefig(f'neo_out_pyqic_nfp{nfp}.pdf', dpi=fig.dpi)#, bbox_inches = 'tight', pad_inches = 0)
+    ## RUN SIMPLE
+    nparticles = 1500  # number of particles
+    tfinal = 1e-3  # seconds
+    nsamples = 10000  # number of time steps
+    s_initial = 0.25 # Same s_initial as precise quasisymmetry paper
+    B_scale = 5.7/vmec.wout.b0  # Scale the magnetic field by a factor
+    Aminor_scale = 1.7/vmec.wout.Aminor_p  # Scale the machine size by a factor
+    notrace_passing = 0  # If 1 skip tracing of passing particles
+    g_field = Simple(wout_filename=vmec.output_file, B_scale=B_scale, Aminor_scale=Aminor_scale)
+    g_particle = ChargedParticleEnsemble(r_initial=s_initial)
+    print("Starting particle tracer")
+    g_orbits = ParticleEnsembleOrbit_Simple(
+        g_particle, g_field, tfinal=tfinal,
+        nparticles=nparticles, nsamples=nsamples,
+        notrace_passing=notrace_passing,
+    )
+    print(f"  Final loss fraction = {g_orbits.total_particles_lost}")
+    ## PLOT SIMPLE
+    g_orbits.plot_loss_fraction(show=False, save=True)
+    data=np.column_stack([g_orbits.time, g_orbits.loss_fraction_array])
+    datafile_path='./loss_history.dat'
+    np.savetxt(datafile_path, data, fmt=['%s','%s'])
+    ## RETURN TO MAIN DIRECTORY
+    os.chdir(this_path)
 
 if __name__ == "__main__":
-    main()
+    nfp=3
+    stel = main(nfp=nfp, refine_optimized=True, nphi=201, maxiter = 10000, show=False)
+    asses_performance(r=0.1,nfp=nfp,delete_old=True)
