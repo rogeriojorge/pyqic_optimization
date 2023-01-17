@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import os
 import shutil
+import argparse
 import vmecPlot2
 import subprocess
 import numpy as np
@@ -22,11 +23,11 @@ except: pass
 mpi = MpiPartition()
 this_path = Path(__file__).parent.resolve()
 
-def plot_results(stel):
+def plot_results(stel, show=False):
     plt.figure()
     plt.subplot(2, 2, 1)
     plt.plot(stel.varphi,stel.B2cQI,label='B2c')
-    plt.plot(stel.varphi,stel.B2QI_factor,label='B2QI_factor')
+    plt.plot(stel.varphi,stel.B2cQI_factor,label='B2QI_factor')
     plt.legend();plt.xlabel(r'$\varphi$')
     plt.subplot(2, 2, 2)
     plt.plot(stel.varphi, stel.B20QI_deviation,label='B20 deviation')
@@ -40,23 +41,20 @@ def plot_results(stel):
     plt.plot(stel.varphi, stel.B2sQI,label='B2s')
     plt.legend();plt.xlabel(r'$\varphi$')
     plt.tight_layout()
+    if show: plt.show()
 
 def initial_configuration(nphi=131,order = 'r2',nfp=1):
     rc      = [ 1.0,0.0,-0.3,0.0,0.01,0.0,0.001 ]
     zs      = [ 0.0,0.0,-0.2,0.0,0.01,0.0,0.001 ]
-    B0_vals = [ 1.0,0.1 ]
+    B0_vals = [ 1.0,0.16 ]
     omn_method ='non-zone-fourier'
     k_buffer = 1
     p_buffer = 2
-    d_over_curvature = 0.5
-    delta   = 0.1
-    d_svals = [ 0.0,0.01,0.01,0.01 ]
-    X2s_svals = [ 0.0,0.0,0.0,0.0 ]
-    X2c_cvals = [ 0.0,0.0,0.0 ]
+    delta = 0.1
+    d_over_curvature_cvals = [0.5,0.001,0.001]
     X2s_cvals = [ 0.01,0.01,0.01 ]
     X2c_svals = [ 0.0,0.01,0.01,0.01 ]
-    p2      =  0.0
-    return Qic(omn_method = omn_method, p_buffer=p_buffer, p2=p2, delta=delta, k_buffer=k_buffer, rc=rc,zs=zs, nfp=nfp, B0_vals=B0_vals, d_svals=d_svals, nphi=nphi, omn=True, B2c_cvals=X2c_cvals, B2s_svals=X2s_svals, order=order, d_over_curvature=d_over_curvature, B2c_svals=X2c_svals, B2s_cvals=X2s_cvals)
+    return Qic(omn_method = omn_method, delta=delta, p_buffer=p_buffer, k_buffer=k_buffer, rc=rc,zs=zs, nfp=nfp, B0_vals=B0_vals, nphi=nphi, omn=True, order=order, d_over_curvature_cvals=d_over_curvature_cvals, B2c_svals=X2c_svals, B2s_cvals=X2s_cvals)
 
 def print_results(stel,initial_obj=0):
     out_txt  = f'from qic import Qic\n'
@@ -67,7 +65,7 @@ def print_results(stel,initial_obj=0):
     out_txt += f'    omn_method = "{stel.omn_method}"\n'
     out_txt += f'    k_buffer = {stel.k_buffer}\n'
     out_txt += f'    p_buffer = {stel.p_buffer}\n'
-    out_txt += f'    d_over_curvature = {stel.d_over_curvature}\n'
+    out_txt += f'    d_over_curvature_cvals = [{",".join([str(elem) for elem in stel.d_over_curvature_cvals])}]\n'
     out_txt += f'    delta   = {stel.delta}\n'
     out_txt += f'    d_svals = [{",".join([str(elem) for elem in stel.d_svals])}]\n'
     out_txt += f'    nfp     = {stel.nfp}\n'
@@ -98,7 +96,7 @@ def print_results(stel,initial_obj=0):
     if not initial_obj==0:
         out_txt += f'    # Initial objective = {initial_obj}\n'
     out_txt += f'    # Final objective = {obj(stel)}\n'
-    out_txt += f'    return Qic(omn_method = omn_method, delta=delta, p_buffer=p_buffer, p2=p2, k_buffer=k_buffer, rc=rc,zs=zs, nfp=nfp, B0_vals=B0_vals, d_svals=d_svals, nphi=nphi, omn=True, B2c_cvals=X2c_cvals, B2s_svals=X2s_svals, order=order, d_over_curvature=d_over_curvature, B2c_svals=X2c_svals, B2s_cvals=X2s_cvals)'
+    out_txt += f'    return Qic(omn_method = omn_method, delta=delta, p_buffer=p_buffer, p2=p2, k_buffer=k_buffer, rc=rc,zs=zs, nfp=nfp, B0_vals=B0_vals, d_svals=d_svals, nphi=nphi, omn=True, B2c_cvals=X2c_cvals, B2s_svals=X2s_svals, order=order, d_over_curvature_cvals=d_over_curvature_cvals, B2c_svals=X2c_svals, B2s_cvals=X2s_cvals)'
     with open(os.path.join(this_path,f'optimized_configuration_nfp{stel.nfp}.py'), 'w') as f:
         f.write(out_txt)
     print(out_txt)
@@ -111,13 +109,17 @@ def fun(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[]):
     try:
         stel.set_dofs(new_dofs)
         objective_function = obj(stel)
-        print(f"fun#{info['Nfeval']} -", f"\N{GREEK CAPITAL LETTER DELTA}B20 = {stel.B20QI_deviation_max:.2f},",
-                                        f"\N{GREEK CAPITAL LETTER DELTA}B2c = {stel.B2cQI_deviation_max:.2f},",
-                                        f"\N{GREEK CAPITAL LETTER DELTA}B2s = {stel.B2sQI_deviation_max:.2f},",
-                                        f"1/L\N{GREEK CAPITAL LETTER DELTA}B = {np.max(stel.inv_L_grad_B):.2f},",
-                                        f"1/L\N{GREEK CAPITAL LETTER DELTA}\N{GREEK CAPITAL LETTER DELTA}B = {stel.grad_grad_B_inverse_scale_length:.2f},",
-                                        f"B0(1) = {stel.B0_vals[1]:.2f},",
-                                        f"J = {objective_function:.2f}")
+        print(f"fun#{info['Nfeval']} -",
+            # f"\N{GREEK CAPITAL LETTER DELTA}B20 = {stel.B20QI_deviation_max:.2f},",
+            # f"\N{GREEK CAPITAL LETTER DELTA}B2s = {stel.B2sQI_deviation_max:.2f},",
+            f"\N{GREEK CAPITAL LETTER DELTA}B2c = {stel.B2cQI_deviation_max:.2f},",
+            f"1/L\N{GREEK CAPITAL LETTER DELTA}B = {np.max(stel.inv_L_grad_B):.2f},",
+            f"1/L\N{GREEK CAPITAL LETTER DELTA}\N{GREEK CAPITAL LETTER DELTA}B = {stel.grad_grad_B_inverse_scale_length:.2f},",
+            f"B0(1) = {stel.B0_vals[1]:.2f},",
+            f"max(elong) = {stel.max_elongation:.2f},",
+            f"max(Y20) = {max(abs(stel.Y20)):.2f},",
+            f"\N{GREEK CAPITAL LETTER DELTA}\N{GREEK SMALL LETTER ALPHA} = {max(abs(stel.alpha - stel.alpha_no_buffer)):.2f},",
+            f"J = {objective_function:.2f}")
         obj_array.append(objective_function)
     except Exception as e:
         print(e)
@@ -125,64 +127,64 @@ def fun(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[]):
     return objective_function
 
 def obj(stel):
-    weight_XYZ2 = 0.1
-    weight_B0vals = 300
-    weight_B2c_dev = 100
-    weight_d_at_0 = 0.1
-    weight_B20cs = 0.1
-    weight_elongation = 0.1
-    weight_d = 0.1
-    weight_alpha_diff = 1
-    return np.sum(weight_B2c_dev*(stel.B2cQI_deviation**2 + stel.B2sQI_deviation**2 + stel.B20QI_deviation**2)
-                + stel.inv_L_grad_B**2 + stel.grad_grad_B_inverse_scale_length_vs_varphi**2
-                + weight_XYZ2*(stel.X20**2 + stel.X2c**2 + stel.X2s**2
-                             + stel.Y20**2 + stel.Y2c**2 + stel.Y2s**2
-                             + stel.Z20**2 + stel.Z2c**2 + stel.Z2s**2)
-                + weight_B20cs*(stel.B20**2 + stel.B2c**2 + stel.B2s**2)
-                + weight_elongation*stel.elongation**2 + weight_d*stel.d**2 + weight_alpha_diff*(stel.alpha - stel.alpha_no_buffer)**2)/stel.nphi \
-                + weight_B0vals*stel.B0_vals[1]**2 + weight_d_at_0*stel.d_curvature_d_varphi_at_0**2 + weight_d_at_0*stel.d_d_d_varphi_at_0**2
+    weight_XYZ2 = 0.007
+    weight_B0vals = 2000
+    B0_well_depth = 0.18
+    weight_B2c_dev = 10
+    weight_d_at_0 = 1
+    weight_B20cs = 0.2
+    weight_gradB_scale_length = 0.04
+    weight_elongation = 0.05
+    weight_d = 0.5
+    weight_alpha_diff = 1.0
+    return weight_B2c_dev*np.sum(stel.B2cQI_deviation**2)/stel.nphi \
+         + weight_gradB_scale_length*np.sum((stel.inv_L_grad_B**2 + stel.grad_grad_B_inverse_scale_length_vs_varphi**2))/stel.nphi \
+         + weight_B0vals*(stel.B0_vals[1]-B0_well_depth)**2 \
+         + weight_elongation*np.sum(stel.elongation**2)/stel.nphi \
+         + weight_XYZ2*np.sum(stel.X20**2 + stel.X2c**2 + stel.X2s**2
+                            + stel.Y20**2 + stel.Y2c**2 + stel.Y2s**2
+                            + stel.Z20**2 + stel.Z2c**2 + stel.Z2s**2)/stel.nphi \
+         + weight_alpha_diff*np.sum((stel.alpha - stel.alpha_no_buffer)**2)/stel.nphi \
+         + weight_d*np.sum(stel.d**2)/stel.nphi \
+         + weight_d_at_0*stel.d_curvature_d_varphi_at_0**2 \
+         + weight_d_at_0*stel.d_d_d_varphi_at_0**2 \
+         + weight_B20cs*np.sum(stel.B20**2 + stel.B2c**2 + stel.B2s**2)/stel.nphi
 
-def main(nfp=1, refine_optimized=False, nphi=91, maxiter = 3000, show=True):
+def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, show=True):
     if nfp not in [1,2,3]: raise ValueError('nfp should be 1, 2 or 3.')
-    if refine_optimized:
-        if nfp==1:
-            stel = optimized_configuration_nfp1(nphi)
-        elif nfp==2:
-            stel = optimized_configuration_nfp2(nphi)
-        elif nfp==3:
-            stel = optimized_configuration_nfp3(nphi)
-    else:
-        stel = initial_configuration(nfp=nfp)
+    if refine_optimization:
+        if nfp==1: stel = optimized_configuration_nfp1(nphi)
+        elif nfp==2: stel = optimized_configuration_nfp2(nphi)
+        elif nfp==3: stel = optimized_configuration_nfp3(nphi)
+    else: stel = initial_configuration(nfp=nfp)
     initial_obj = obj(stel)
     initial_dofs = stel.get_dofs()
-    parameters_to_change = (['zs(2)','B0(1)','ds(1)','B2cs(1)','B2sc(0)','d_over_curvature',
-                             'zs(4)','rc(2)','ds(2)','B2cs(2)','B2sc(1)',
-                             'zs(6)','rc(4)','ds(3)','B2cs(3)','B2sc(2)'])
+    parameters_to_change = (['zs(2)','B0(1)','B2cs(1)','B2sc(0)',
+                             'zs(4)','rc(2)','B2cs(2)','B2sc(1)',
+                             'zs(6)','rc(4)','B2cs(3)','B2sc(2)',
+                             'd_over_curvaturec(0)','d_over_curvaturec(1)','d_over_curvaturec(2)'])
     dofs = [initial_dofs[stel.names.index(parameter)] for parameter in parameters_to_change]
-    if show: plot_results(stel)
+    # if show: plot_results(stel)
     obj_array = []
     method = 'Nelder-Mead'
     maxfev  = maxiter
     res = minimize(fun, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array), method=method, tol=1e-3, options={'maxiter': maxiter, 'maxfev': maxfev, 'disp': True})
     print_results(stel, initial_obj)
     if show:
-        plot_results(stel)
+        # plot_results(stel)
         plt.figure();plt.xlabel('Function evaluation')
         plt.plot(np.array(obj_array));plt.ylabel('Objective function')
         stel.B_contour(show=False)
+        stel.plot(show=False)
         plt.show()
         # stel.plot_boundary()
     return stel
 
-def asses_performance(nfp=1, r=0.1, delete_old=False):
-    if nfp==1:
-        stel = optimized_configuration_nfp1(151)
-    elif nfp==2:
-        stel = optimized_configuration_nfp2(151)
-    elif nfp==3:
-        stel = optimized_configuration_nfp3(151)
-    else:
-        raise ValueError('Only nfp = 1, 2 and 3 allowed.')
+def assess_performance(nfp=1, r=0.1, nphi=201, delete_old=False):
+    if nfp==1: stel = optimized_configuration_nfp1(nphi)
+    elif nfp==2: stel = optimized_configuration_nfp2(nphi)
+    elif nfp==3: stel = optimized_configuration_nfp3(nphi)
+    else: raise ValueError('Only nfp = 1, 2 and 3 allowed.')
     ## INPUT PARAMETERS
     OUT_DIR = os.path.join(this_path,f'qic_nfp{nfp}')
     vmec_output = os.path.join(OUT_DIR,f'wout_qic_nfp{nfp}_000_000000.nc')
@@ -275,6 +277,17 @@ def asses_performance(nfp=1, r=0.1, delete_old=False):
     os.chdir(this_path)
 
 if __name__ == "__main__":
-    nfp=3
-    stel = main(nfp=nfp, refine_optimized=True, nphi=201, maxiter = 10000, show=False)
-    asses_performance(r=0.1,nfp=nfp,delete_old=True)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--nfp", type=int, default=1, required=False)
+    parser.add_argument("--nphi", type=int, default=91, required=False)
+    parser.add_argument("--niterations", type=int, default=300, required=False)
+    parser.add_argument('--assess_performance', action='store_true')
+    parser.add_argument('--no-assess_performance', dest='refine_optimized', action='store_false')
+    parser.set_defaults(assess_performance=False)
+    parser.add_argument("--r_plot", type=float, default=0.1, required=False)
+    parser.add_argument('--refine_optimization', action='store_true')
+    parser.add_argument('--no-refine_optimization', dest='refine_optimized', action='store_false')
+    parser.set_defaults(feature=False)
+    args = parser.parse_args()
+    stel = main(nfp=args.nfp, refine_optimization=args.refine_optimization, nphi=args.nphi, maxiter = args.niterations, show=False if args.assess_performance else True)
+    if args.assess_performance: assess_performance(r=args.r_plot, nfp=args.nfp, delete_old=True)
