@@ -127,14 +127,14 @@ def fun(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[]):
     return objective_function
 
 def obj(stel):
-    weight_XYZ2 = 0.007
+    weight_XYZ2 = 0.05
     weight_B0vals = 2000
     B0_well_depth = 0.18
     weight_B2c_dev = 10
     weight_d_at_0 = 1
     weight_B20cs = 0.2
     weight_gradB_scale_length = 0.04
-    weight_elongation = 0.05
+    weight_elongation = 0.3
     weight_d = 0.5
     weight_alpha_diff = 1.0
     return weight_B2c_dev*np.sum(stel.B2cQI_deviation**2)/stel.nphi \
@@ -157,6 +157,8 @@ def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, show=True):
         elif nfp==2: stel = optimized_configuration_nfp2(nphi)
         elif nfp==3: stel = optimized_configuration_nfp3(nphi)
     else: stel = initial_configuration(nfp=nfp)
+    # stel.plot_boundary(r=0.08)
+    # exit()
     initial_obj = obj(stel)
     initial_dofs = stel.get_dofs()
     parameters_to_change = (['zs(2)','B0(1)','B2cs(1)','B2sc(0)',
