@@ -128,16 +128,16 @@ def fun(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[]):
 
 def obj(stel):
     weight_XYZ2 = 0.05
-    weight_B0vals = 2000
-    B0_well_depth = 0.18
+    weight_B0vals = 1e5
+    B0_well_depth = 0.22
     weight_B2c_dev = 10
     weight_d_at_0 = 1
     weight_B20cs = 0.2
     weight_gradB_scale_length = 0.04
-    weight_elongation = 0.3
+    weight_elongation = 0.4
     weight_d = 0.5
     weight_alpha_diff = 1.0
-    weight_min_geo_qi_consistency = 5e1
+    weight_min_geo_qi_consistency = 1e4
     return weight_B2c_dev*np.sum(stel.B2cQI_deviation**2)/stel.nphi \
          + weight_gradB_scale_length*np.sum((stel.inv_L_grad_B**2 + stel.grad_grad_B_inverse_scale_length_vs_varphi**2))/stel.nphi \
          + weight_B0vals*(stel.B0_vals[1]-B0_well_depth)**2 \
@@ -159,21 +159,23 @@ def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, show=True):
         elif nfp==2: stel = optimized_configuration_nfp2(nphi)
         elif nfp==3: stel = optimized_configuration_nfp3(nphi)
     else: stel = initial_configuration(nfp=nfp)
-    # stel.plot_boundary(r=0.14)
-    # stel.B_contour(r=0.14)
+    # stel.plot_boundary(r=0.1)
+    # stel.B_contour(r=0.1)
     # exit()
     initial_obj = obj(stel)
     initial_dofs = stel.get_dofs()
     parameters_to_change = (['zs(2)','B0(1)','B2cs(1)','B2sc(0)',
                              'zs(4)','rc(2)','B2cs(2)','B2sc(1)',
                              'zs(6)','rc(4)','B2cs(3)','B2sc(2)',
-                             'd_over_curvaturec(0)','d_over_curvaturec(1)','d_over_curvaturec(2)'])
+                             'B2cs(4)','B2sc(3)','B2cs(5)','B2sc(4)','B2cs(6)','B2sc(5)','B2cs(7)','B2sc(6)',
+                             'd_over_curvaturec(0)','d_over_curvaturec(1)','d_over_curvaturec(2)',
+                             'd_over_curvaturec(3)','d_over_curvaturec(4)','d_over_curvaturec(5)'])
     dofs = [initial_dofs[stel.names.index(parameter)] for parameter in parameters_to_change]
     # if show: plot_results(stel)
     obj_array = []
     method = 'Nelder-Mead'
     maxfev  = maxiter
-    res = minimize(fun, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array), method=method, tol=1e-3, options={'maxiter': maxiter, 'maxfev': maxfev, 'disp': True})
+    res = minimize(fun, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array), method=method, tol=1e-4, options={'maxiter': maxiter, 'maxfev': maxfev, 'disp': True})
     print_results(stel, initial_obj)
     if show:
         # plot_results(stel)
@@ -208,13 +210,13 @@ def assess_performance(nfp=1, r=0.1, nphi=201, delete_old=False):
     except: vmec = Vmec(vmec_input, mpi=mpi)
     vmec.indata.ns_array[:3]    = [  16,    51,    101]
     vmec.indata.niter_array[:3] = [ 4000, 10000, 20000]
-    vmec.indata.ftol_array[:3]  = [1e-12, 1e-13, 1e-14]
+    vmec.indata.ftol_array[:3]  = [1e-12, 1e-12, 8e-13]
     vmec.run()
     ## PLOT VMEC
     try: vmecPlot2.main(file=vmec.output_file, name=f'qic_nfp{nfp}', figures_folder=OUT_DIR)
     except Exception as e: print(e)
     ## RUN BOOZ_XFORM
-    b1 = Boozer(vmec, mpol=64, ntor=64)
+    b1 = Boozer(vmec, mpol=51, ntor=51)
     boozxform_nsurfaces=10
     booz_surfaces = np.linspace(0,1,boozxform_nsurfaces,endpoint=False)
     b1.register(booz_surfaces)
