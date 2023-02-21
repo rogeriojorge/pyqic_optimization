@@ -51,9 +51,9 @@ def initial_configuration(nphi=131,order = 'r2',nfp=1):
     k_buffer = 1
     p_buffer = 2
     delta = 0.1
-    d_over_curvature_cvals = [0.5,0.001,0.001]
-    X2s_cvals = [ 0.01,0.01,0.01 ]
-    X2c_svals = [ 0.0,0.01,0.01,0.01 ]
+    d_over_curvature_cvals = [0.5,0.001,0.001,0,0,0]
+    X2s_cvals = [ 0.01,0.01,0.01,0,0,0,0 ]
+    X2c_svals = [ 0.0,0.01,0.01,0.01,0,0,0,0 ]
     return Qic(omn_method = omn_method, delta=delta, p_buffer=p_buffer, k_buffer=k_buffer, rc=rc,zs=zs, nfp=nfp, B0_vals=B0_vals, nphi=nphi, omn=True, order=order, d_over_curvature_cvals=d_over_curvature_cvals, B2c_svals=X2c_svals, B2s_cvals=X2s_cvals)
 
 def print_results(stel,initial_obj=0):
@@ -127,10 +127,10 @@ def fun(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[]):
     return objective_function
 
 def obj(stel):
-    weight_XYZ2 = 0.05
-    weight_B0vals = 1e5
-    B0_well_depth = 0.22
-    weight_B2c_dev = 20
+    weight_XYZ2 = 0.03
+    weight_B0vals = 1e6
+    B0_well_depth = 0.21
+    weight_B2c_dev = 3e2
     weight_d_at_0 = 1
     weight_B20cs = 0.2
     weight_gradB_scale_length = 0.04
@@ -150,7 +150,7 @@ def obj(stel):
          + weight_d_at_0*stel.d_curvature_d_varphi_at_0**2 \
          + weight_d_at_0*stel.d_d_d_varphi_at_0**2 \
          + weight_B20cs*np.sum(stel.B20**2 + stel.B2c**2 + stel.B2s**2)/stel.nphi \
-         + weight_min_geo_qi_consistency*stel.min_geo_qi_consistency(order = 3)**2
+         + weight_min_geo_qi_consistency*stel.min_geo_qi_consistency(order = 2)**2
 
 def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, show=True):
     if nfp not in [1,2,3]: raise ValueError('nfp should be 1, 2 or 3.')
