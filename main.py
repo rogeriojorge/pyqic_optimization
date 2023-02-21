@@ -130,14 +130,14 @@ def obj(stel):
     weight_XYZ2 = 0.05
     weight_B0vals = 1e5
     B0_well_depth = 0.22
-    weight_B2c_dev = 10
+    weight_B2c_dev = 20
     weight_d_at_0 = 1
     weight_B20cs = 0.2
     weight_gradB_scale_length = 0.04
     weight_elongation = 0.4
     weight_d = 0.5
     weight_alpha_diff = 1.0
-    weight_min_geo_qi_consistency = 1e4
+    weight_min_geo_qi_consistency = 1e5
     return weight_B2c_dev*np.sum(stel.B2cQI_deviation**2)/stel.nphi \
          + weight_gradB_scale_length*np.sum((stel.inv_L_grad_B**2 + stel.grad_grad_B_inverse_scale_length_vs_varphi**2))/stel.nphi \
          + weight_B0vals*(stel.B0_vals[1]-B0_well_depth)**2 \
