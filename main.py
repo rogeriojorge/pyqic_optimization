@@ -137,6 +137,7 @@ def obj(stel):
     weight_elongation = 0.3
     weight_d = 0.5
     weight_alpha_diff = 1.0
+    weight_min_geo_qi_consistency = 5e1
     return weight_B2c_dev*np.sum(stel.B2cQI_deviation**2)/stel.nphi \
          + weight_gradB_scale_length*np.sum((stel.inv_L_grad_B**2 + stel.grad_grad_B_inverse_scale_length_vs_varphi**2))/stel.nphi \
          + weight_B0vals*(stel.B0_vals[1]-B0_well_depth)**2 \
@@ -148,7 +149,8 @@ def obj(stel):
          + weight_d*np.sum(stel.d**2)/stel.nphi \
          + weight_d_at_0*stel.d_curvature_d_varphi_at_0**2 \
          + weight_d_at_0*stel.d_d_d_varphi_at_0**2 \
-         + weight_B20cs*np.sum(stel.B20**2 + stel.B2c**2 + stel.B2s**2)/stel.nphi
+         + weight_B20cs*np.sum(stel.B20**2 + stel.B2c**2 + stel.B2s**2)/stel.nphi \
+         + weight_min_geo_qi_consistency*stel.min_geo_qi_consistency(order = 3)**2
 
 def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, show=True):
     if nfp not in [1,2,3]: raise ValueError('nfp should be 1, 2 or 3.')
@@ -157,7 +159,8 @@ def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, show=True):
         elif nfp==2: stel = optimized_configuration_nfp2(nphi)
         elif nfp==3: stel = optimized_configuration_nfp3(nphi)
     else: stel = initial_configuration(nfp=nfp)
-    # stel.plot_boundary(r=0.08)
+    # stel.plot_boundary(r=0.14)
+    # stel.B_contour(r=0.14)
     # exit()
     initial_obj = obj(stel)
     initial_dofs = stel.get_dofs()
@@ -175,7 +178,7 @@ def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, show=True):
     if show:
         # plot_results(stel)
         plt.figure();plt.xlabel('Function evaluation')
-        plt.plot(np.array(obj_array));plt.ylabel('Objective function')
+        plt.plot(np.array(obj_array)[len(obj_array)//2:]);plt.ylabel('Objective function')
         stel.B_contour(show=False)
         stel.plot(show=False)
         plt.show()
