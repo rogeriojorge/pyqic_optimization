@@ -105,30 +105,37 @@ def print_results(stel,initial_obj=0):
 def fun(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[]):
     info['Nfeval'] += 1
     new_dofs = stel.get_dofs()
-    for count, parameter in enumerate(parameters_to_change): new_dofs[stel.names.index(parameter)] = dofs[count]
-    try:
-        stel.set_dofs(new_dofs)
-        objective_function = obj(stel)
+    for count, parameter in enumerate(parameters_to_change):
+        new_dofs[stel.names.index(parameter)] = dofs[count]
+    stel.set_dofs(new_dofs)
+    if stel.order=='r1':
+        objective_function = stel.min_geo_qi_consistency(order = 2)
         print(f"fun#{info['Nfeval']} -",
-            # f"\N{GREEK CAPITAL LETTER DELTA}B20 = {stel.B20QI_deviation_max:.2f},",
-            # f"\N{GREEK CAPITAL LETTER DELTA}B2s = {stel.B2sQI_deviation_max:.2f},",
-            f"\N{GREEK CAPITAL LETTER DELTA}B2c = {stel.B2cQI_deviation_max:.2f},",
-            f"1/L\N{GREEK CAPITAL LETTER DELTA}B = {np.max(stel.inv_L_grad_B):.2f},",
-            f"1/L\N{GREEK CAPITAL LETTER DELTA}\N{GREEK CAPITAL LETTER DELTA}B = {stel.grad_grad_B_inverse_scale_length:.2f},",
-            f"B0(1) = {stel.B0_vals[1]:.2f},",
-            f"max(elong) = {stel.max_elongation:.2f},",
-            f"max(Y20) = {max(abs(stel.Y20)):.2f},",
-            f"\N{GREEK CAPITAL LETTER DELTA}\N{GREEK SMALL LETTER ALPHA} = {max(abs(stel.alpha - stel.alpha_no_buffer)):.2f},",
-            f"J = {objective_function:.2f}")
+            f"min_geo_qi_consistency = {objective_function}")
         obj_array.append(objective_function)
-    except Exception as e:
-        print(e)
-        objective_function = 1e3
+    else:
+        try:
+            objective_function = obj(stel)
+            print(f"fun#{info['Nfeval']} -",
+                # f"\N{GREEK CAPITAL LETTER DELTA}B20 = {stel.B20QI_deviation_max:.2f},",
+                # f"\N{GREEK CAPITAL LETTER DELTA}B2s = {stel.B2sQI_deviation_max:.2f},",
+                f"\N{GREEK CAPITAL LETTER DELTA}B2c = {stel.B2cQI_deviation_max:.2f},",
+                f"1/L\N{GREEK CAPITAL LETTER DELTA}B = {np.max(stel.inv_L_grad_B):.2f},",
+                f"1/L\N{GREEK CAPITAL LETTER DELTA}\N{GREEK CAPITAL LETTER DELTA}B = {stel.grad_grad_B_inverse_scale_length:.2f},",
+                f"B0(1) = {stel.B0_vals[1]:.2f},",
+                f"max(elong) = {stel.max_elongation:.2f},",
+                f"max(Y20) = {max(abs(stel.Y20)):.2f},",
+                f"\N{GREEK CAPITAL LETTER DELTA}\N{GREEK SMALL LETTER ALPHA} = {max(abs(stel.alpha - stel.alpha_no_buffer)):.2f},",
+                f"J = {objective_function:.2f}")
+            obj_array.append(objective_function)
+        except Exception as e:
+            print(e)
+            objective_function = 1e3
     return objective_function
 
 def obj(stel):
-    weight_XYZ2 = 0.03
-    weight_B0vals = 1e6
+    weight_XYZ2 = 0.05
+    weight_B0vals = 1e5
     B0_well_depth = 0.21
     weight_B2c_dev = 3e2
     weight_d_at_0 = 1
@@ -139,6 +146,7 @@ def obj(stel):
     weight_alpha_diff = 1.0
     weight_min_geo_qi_consistency = 1e5
     return weight_B2c_dev*np.sum(stel.B2cQI_deviation**2)/stel.nphi \
+         + weight_min_geo_qi_consistency*stel.min_geo_qi_consistency(order = 2)**2 \
          + weight_gradB_scale_length*np.sum((stel.inv_L_grad_B**2 + stel.grad_grad_B_inverse_scale_length_vs_varphi**2))/stel.nphi \
          + weight_B0vals*(stel.B0_vals[1]-B0_well_depth)**2 \
          + weight_elongation*np.sum(stel.elongation**2)/stel.nphi \
@@ -150,7 +158,6 @@ def obj(stel):
          + weight_d_at_0*stel.d_curvature_d_varphi_at_0**2 \
          + weight_d_at_0*stel.d_d_d_varphi_at_0**2 \
          + weight_B20cs*np.sum(stel.B20**2 + stel.B2c**2 + stel.B2s**2)/stel.nphi \
-         + weight_min_geo_qi_consistency*stel.min_geo_qi_consistency(order = 2)**2
 
 def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, show=True):
     if nfp not in [1,2,3]: raise ValueError('nfp should be 1, 2 or 3.')
@@ -164,10 +171,15 @@ def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, show=True):
     # exit()
     initial_obj = obj(stel)
     initial_dofs = stel.get_dofs()
-    parameters_to_change = (['zs(2)','B0(1)','B2cs(1)','B2sc(0)',
-                             'zs(4)','rc(2)','B2cs(2)','B2sc(1)',
-                             'zs(6)','rc(4)','B2cs(3)','B2sc(2)',
-                             'B2cs(4)','B2sc(3)','B2cs(5)','B2sc(4)','B2cs(6)','B2sc(5)','B2cs(7)','B2sc(6)',
+    # parameters_to_change = (['zs(2)','B0(1)','B2cs(1)','B2sc(0)',
+    #                          'zs(4)','rc(2)','B2cs(2)','B2sc(1)',
+    #                          'zs(6)','rc(4)','B2cs(3)','B2sc(2)',
+    #                          'B2cs(4)','B2sc(3)','B2cs(5)','B2sc(4)','B2cs(6)','B2sc(5)','B2cs(7)','B2sc(6)',
+    #                          'd_over_curvaturec(0)','d_over_curvaturec(1)','d_over_curvaturec(2)',
+    #                          'd_over_curvaturec(3)','d_over_curvaturec(4)','d_over_curvaturec(5)'])
+    parameters_to_change = (['zs(2)','B0(1)',
+                             'zs(4)','rc(2)',
+                             'zs(6)','rc(4)',
                              'd_over_curvaturec(0)','d_over_curvaturec(1)','d_over_curvaturec(2)',
                              'd_over_curvaturec(3)','d_over_curvaturec(4)','d_over_curvaturec(5)'])
     dofs = [initial_dofs[stel.names.index(parameter)] for parameter in parameters_to_change]
@@ -175,6 +187,20 @@ def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, show=True):
     obj_array = []
     method = 'Nelder-Mead'
     maxfev  = maxiter
+    stel.order = 'r1'
+    maxiter_first_order = 100
+    res = minimize(fun, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array), method=method, tol=1e-3, options={'maxiter': maxiter, 'maxfev': maxfev, 'disp': True})
+    from qic.calculate_r2 import evaluate_X2c_X2s_QI
+    X2c, X2s = evaluate_X2c_X2s_QI(stel, X2s_in=0)
+    stel.order = 'r3'
+    stel.B2c_svals=X2c
+    stel.B2s_cvals=X2s
+    stel._set_names()
+    stel.calculate()
+    print_results(stel, initial_obj)
+    initial_dofs = stel.get_dofs()
+    dofs = [initial_dofs[stel.names.index(parameter)] for parameter in parameters_to_change]
+    obj_array = []
     res = minimize(fun, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array), method=method, tol=1e-4, options={'maxiter': maxiter, 'maxfev': maxfev, 'disp': True})
     print_results(stel, initial_obj)
     if show:
