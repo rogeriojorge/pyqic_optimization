@@ -134,17 +134,17 @@ def fun(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[]):
     return objective_function
 
 def obj(stel):
-    weight_XYZ2 = 0.07
+    weight_XYZ2 = 0.3
     weight_B0vals = 1e5
     B0_well_depth = 0.21
-    weight_B2c_dev = 5e2
+    weight_B2c_dev = 1e2
     weight_d_at_0 = 1
     weight_B20cs = 0.1
     weight_gradB_scale_length = 0.04
-    weight_elongation = 0.4
+    weight_elongation = 0.3
     weight_d = 0.5
     weight_alpha_diff = 1.0
-    weight_min_geo_qi_consistency = 1e4
+    weight_min_geo_qi_consistency = 1e3
     return weight_B2c_dev*np.sum(stel.B2cQI_deviation**2)/stel.nphi \
          + weight_min_geo_qi_consistency*stel.min_geo_qi_consistency(order = 2)**2 \
          + weight_gradB_scale_length*np.sum((stel.inv_L_grad_B**2 + stel.grad_grad_B_inverse_scale_length_vs_varphi**2))/stel.nphi \
@@ -186,8 +186,7 @@ def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, show=True):
     method = 'Nelder-Mead'
     maxfev  = maxiter
     stel.order = 'r1'
-    maxiter_first_order = 100
-    res = minimize(fun, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array), method=method, tol=1e-3, options={'maxiter': maxiter, 'maxfev': maxfev, 'disp': True})
+    res = minimize(fun, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array), method=method, tol=1e-4, options={'maxiter': maxiter, 'maxfev': maxfev, 'disp': True})
     from qic.calculate_r2 import evaluate_X2c_X2s_QI
     X2c, X2s = evaluate_X2c_X2s_QI(stel, X2s_in=0)
     stel.order = 'r3'
