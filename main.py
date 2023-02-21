@@ -134,17 +134,17 @@ def fun(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[]):
     return objective_function
 
 def obj(stel):
-    weight_XYZ2 = 0.05
+    weight_XYZ2 = 0.07
     weight_B0vals = 1e5
     B0_well_depth = 0.21
-    weight_B2c_dev = 3e2
+    weight_B2c_dev = 5e2
     weight_d_at_0 = 1
-    weight_B20cs = 0.2
+    weight_B20cs = 0.1
     weight_gradB_scale_length = 0.04
     weight_elongation = 0.4
     weight_d = 0.5
     weight_alpha_diff = 1.0
-    weight_min_geo_qi_consistency = 1e5
+    weight_min_geo_qi_consistency = 1e4
     return weight_B2c_dev*np.sum(stel.B2cQI_deviation**2)/stel.nphi \
          + weight_min_geo_qi_consistency*stel.min_geo_qi_consistency(order = 2)**2 \
          + weight_gradB_scale_length*np.sum((stel.inv_L_grad_B**2 + stel.grad_grad_B_inverse_scale_length_vs_varphi**2))/stel.nphi \
@@ -177,9 +177,7 @@ def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, show=True):
     #                          'B2cs(4)','B2sc(3)','B2cs(5)','B2sc(4)','B2cs(6)','B2sc(5)','B2cs(7)','B2sc(6)',
     #                          'd_over_curvaturec(0)','d_over_curvaturec(1)','d_over_curvaturec(2)',
     #                          'd_over_curvaturec(3)','d_over_curvaturec(4)','d_over_curvaturec(5)'])
-    parameters_to_change = (['zs(2)','B0(1)',
-                             'zs(4)','rc(2)',
-                             'zs(6)','rc(4)',
+    parameters_to_change = (['zs(2)','B0(1)','zs(4)','rc(2)','zs(6)','rc(4)',
                              'd_over_curvaturec(0)','d_over_curvaturec(1)','d_over_curvaturec(2)',
                              'd_over_curvaturec(3)','d_over_curvaturec(4)','d_over_curvaturec(5)'])
     dofs = [initial_dofs[stel.names.index(parameter)] for parameter in parameters_to_change]
@@ -199,6 +197,9 @@ def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, show=True):
     stel.calculate()
     print_results(stel, initial_obj)
     initial_dofs = stel.get_dofs()
+    for count, X2cI in enumerate(X2c):
+        parameters_to_change.append(f'B2sc({count})')
+        parameters_to_change.append(f'B2cs({count})')
     dofs = [initial_dofs[stel.names.index(parameter)] for parameter in parameters_to_change]
     obj_array = []
     res = minimize(fun, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array), method=method, tol=1e-4, options={'maxiter': maxiter, 'maxfev': maxfev, 'disp': True})
