@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import time
 import shutil
 import argparse
 import vmecPlot2
@@ -10,8 +11,8 @@ import booz_xform as bx
 from pathlib import Path
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
+from qic.calculate_r2 import evaluate_X2c_X2s_QI
 from simsopt.mhd import Vmec, Boozer
-from simsopt.util import MpiPartition
 from neat.fields import Simple
 from neat.tracing import ChargedParticleEnsemble, ParticleEnsembleOrbit_Simple
 try: from optimized_configuration_nfp1 import optimized_configuration_nfp1
@@ -20,7 +21,6 @@ try: from optimized_configuration_nfp2 import optimized_configuration_nfp2
 except: pass
 try: from optimized_configuration_nfp3 import optimized_configuration_nfp3
 except: pass
-mpi = MpiPartition()
 this_path = Path(__file__).parent.resolve()
 
 def plot_results(stel, show=False):
@@ -56,7 +56,7 @@ def initial_configuration(nphi=131,order = 'r2',nfp=1):
     X2c_svals = [ 0.0,0.01,0.01,0.01,0,0,0,0 ]
     return Qic(omn_method = omn_method, delta=delta, p_buffer=p_buffer, k_buffer=k_buffer, rc=rc,zs=zs, nfp=nfp, B0_vals=B0_vals, nphi=nphi, omn=True, order=order, d_over_curvature_cvals=d_over_curvature_cvals, B2c_svals=X2c_svals, B2s_cvals=X2s_cvals)
 
-def print_results(stel,initial_obj=0):
+def print_results(stel,initial_obj=0, Print=True):
     out_txt  = f'from qic import Qic\n'
     out_txt += f'def optimized_configuration_nfp{stel.nfp}(nphi=131,order = "r2"):\n'
     out_txt += f'    rc      = [{",".join([str(elem) for elem in stel.rc])}]\n'
@@ -99,10 +99,10 @@ def print_results(stel,initial_obj=0):
     out_txt += f'    return Qic(omn_method = omn_method, delta=delta, p_buffer=p_buffer, p2=p2, k_buffer=k_buffer, rc=rc,zs=zs, nfp=nfp, B0_vals=B0_vals, d_svals=d_svals, nphi=nphi, omn=True, B2c_cvals=X2c_cvals, B2s_svals=X2s_svals, order=order, d_over_curvature_cvals=d_over_curvature_cvals, B2c_svals=X2c_svals, B2s_cvals=X2s_cvals)'
     with open(os.path.join(this_path,f'optimized_configuration_nfp{stel.nfp}.py'), 'w') as f:
         f.write(out_txt)
-    print(out_txt)
+    if Print: print(out_txt)
     return out_txt
 
-def fun(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[]):
+def fun(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[], start_time = 0):
     info['Nfeval'] += 1
     new_dofs = stel.get_dofs()
     for count, parameter in enumerate(parameters_to_change):
@@ -131,6 +131,23 @@ def fun(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[]):
         except Exception as e:
             print(e)
             objective_function = 1e3
+    n_plot = 51
+    n_save_results=1511
+    time_in_seconds = int(time.time()-start_time)
+    hours = time_in_seconds // 3600
+    minutes = (time_in_seconds % 3600) // 60
+    seconds = time_in_seconds % 60
+    if np.mod(info['Nfeval'],n_plot)==0:
+        log_obj_array = np.log(obj_array)
+        # plt.clf()
+        plt.plot(np.linspace(info['Nfeval']-n_plot,info['Nfeval'],n_plot),log_obj_array[-n_plot:],'b-')
+        plt.gca().set_ylim(top=1.03*log_obj_array[0])
+        # plt.gca().set_ylim(top=9)
+        plt.gca().set_ylim(bottom=np.min(log_obj_array))
+        plt.title(f'Running time: {hours:02d}h:{minutes:02d}m:{seconds:02d}s, minimum f = {np.min(obj_array):.2f}')
+        plt.pause(1e-5)
+    if np.mod(info['Nfeval'],n_save_results)==0:
+        print_results(stel, 0, Print=False)
     return objective_function
 
 def obj(stel):
@@ -144,9 +161,9 @@ def obj(stel):
     weight_elongation = 0.3
     weight_d = 0.5
     weight_alpha_diff = 1.0
-    weight_min_geo_qi_consistency = 1e3
+    weight_min_geo_qi_consistency = 1e4
     return weight_B2c_dev*np.sum(stel.B2cQI_deviation**2)/stel.nphi \
-         + weight_min_geo_qi_consistency*stel.min_geo_qi_consistency(order = 2)**2 \
+         + weight_min_geo_qi_consistency*stel.min_geo_qi_consistency(order = 1)**2 \
          + weight_gradB_scale_length*np.sum((stel.inv_L_grad_B**2 + stel.grad_grad_B_inverse_scale_length_vs_varphi**2))/stel.nphi \
          + weight_B0vals*(stel.B0_vals[1]-B0_well_depth)**2 \
          + weight_elongation*np.sum(stel.elongation**2)/stel.nphi \
@@ -171,37 +188,56 @@ def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, show=True):
     # exit()
     initial_obj = obj(stel)
     initial_dofs = stel.get_dofs()
-    # parameters_to_change = (['zs(2)','B0(1)','B2cs(1)','B2sc(0)',
-    #                          'zs(4)','rc(2)','B2cs(2)','B2sc(1)',
-    #                          'zs(6)','rc(4)','B2cs(3)','B2sc(2)',
-    #                          'B2cs(4)','B2sc(3)','B2cs(5)','B2sc(4)','B2cs(6)','B2sc(5)','B2cs(7)','B2sc(6)',
-    #                          'd_over_curvaturec(0)','d_over_curvaturec(1)','d_over_curvaturec(2)',
-    #                          'd_over_curvaturec(3)','d_over_curvaturec(4)','d_over_curvaturec(5)'])
-    parameters_to_change = (['zs(2)','B0(1)','zs(4)','rc(2)','zs(6)','rc(4)',
+    parameters_to_change = (['zs(2)',   'B0(1)',    'zs(4)',    'rc(2)',   'zs(6)',     'rc(4)',
                              'd_over_curvaturec(0)','d_over_curvaturec(1)','d_over_curvaturec(2)',
                              'd_over_curvaturec(3)','d_over_curvaturec(4)','d_over_curvaturec(5)'])
+    bounds =               [(-0.3,0.3), (0.1,0.22),(-0.05,0.05),(-0.3,0.3),(-0.01,0.01),(-0.05,0.05),
+                            (-0.5,0.5), (-0.1,0.1), (-0.1,0.1),
+                            (-0.1,0.1), (-0.1,0.1), (-0.1,0.1)]
     dofs = [initial_dofs[stel.names.index(parameter)] for parameter in parameters_to_change]
-    # if show: plot_results(stel)
-    obj_array = []
     method = 'Nelder-Mead'
     maxfev  = maxiter
-    stel.order = 'r1'
-    res = minimize(fun, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array), method=method, tol=1e-4, options={'maxiter': maxiter, 'maxfev': maxfev, 'disp': True})
-    from qic.calculate_r2 import evaluate_X2c_X2s_QI
+    if not refine_optimization:
+        obj_array = []
+        stel.order = 'r1'
+        plt.ion()
+        fig, ax = plt.subplots()
+        plt.plot(obj_array);plt.xlabel('Iteration');plt.ylabel('ln(Function Value)')
+        start_time = time.time()
+        res = minimize(fun, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array, start_time), method=method, tol=1e-4, options={'maxiter': maxiter, 'maxfev': maxfev, 'disp': True})
+        plt.savefig(os.path.join(this_path,f'order1_opt_nfp{stel.nfp}.pdf'))
+        plt.close()
     X2c, X2s = evaluate_X2c_X2s_QI(stel, X2s_in=0)
-    stel.order = 'r3'
-    stel.B2c_svals=X2c
-    stel.B2s_cvals=X2s
-    stel._set_names()
-    stel.calculate()
-    print_results(stel, initial_obj)
-    initial_dofs = stel.get_dofs()
+    if not refine_optimization:
+        stel.order = 'r3'
+        stel.B2c_svals=X2c
+        stel.B2s_cvals=X2s
+        stel._set_names()
+        stel.calculate()
+        print_results(stel, initial_obj)
+        initial_dofs = stel.get_dofs()
     for count, X2cI in enumerate(X2c):
         parameters_to_change.append(f'B2sc({count})')
+        bounds.append((-10,10))
         parameters_to_change.append(f'B2cs({count})')
+        bounds.append((-10,10))
     dofs = [initial_dofs[stel.names.index(parameter)] for parameter in parameters_to_change]
+    from scipy.optimize import least_squares, basinhopping, dual_annealing
+    def print_minimum(x, f, context):
+        print('New minimum found!')
+        print_results(stel, initial_obj, Print=False)
     obj_array = []
-    res = minimize(fun, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array), method=method, tol=1e-4, options={'maxiter': maxiter, 'maxfev': maxfev, 'disp': True})
+    plt.ion()
+    fig, ax = plt.subplots()
+    plt.plot(obj_array);plt.xlabel('Iteration');plt.ylabel('ln(Function Value)')
+    start_time = time.time()
+    # res = dual_annealing(fun, x0=dofs, bounds=bounds, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array, start_time), maxiter=maxiter, no_local_search=True, callback=print_minimum)
+    # res = least_squares(fun, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array), method='trf', ftol=1e-4, max_nfev=maxfev, diff_step=0.9)
+    # res = basinhopping(fun, dofs, minimizer_kwargs={"args": (stel, parameters_to_change, {'Nfeval':0}, obj_array)}, niter=maxiter)
+    method = 'Nelder-Mead'
+    res = minimize(fun, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array, start_time), method=method, tol=1e-4, options={'maxiter': maxiter, 'maxfev': maxfev, 'disp': True})
+    plt.savefig(os.path.join(this_path,f'order3_opt_nfp{stel.nfp}.pdf'))
+    plt.close()
     print_results(stel, initial_obj)
     if show:
         # plot_results(stel)
@@ -232,6 +268,8 @@ def assess_performance(nfp=1, r=0.1, nphi=201, delete_old=False):
     ## CREATE VMEC INPUT FILE
     stel.to_vmec(vmec_input, r=r)
     ## RUN VMEC
+    from simsopt.util import MpiPartition
+    mpi = MpiPartition()
     try: vmec = Vmec(vmec_output, mpi=mpi)
     except: vmec = Vmec(vmec_input, mpi=mpi)
     vmec.indata.ns_array[:3]    = [  16,    51,    101]
