@@ -43,7 +43,7 @@ def plot_results(stel, show=False):
     plt.tight_layout()
     if show: plt.show()
 
-def initial_configuration(nphi=131,order = 'r2',nfp=1):
+def initial_configuration(nphi=131,order = 'r3',nfp=1):
     rc      = [ 1.0,0.0,-0.3,0.0,0.01,0.0,0.001 ]
     zs      = [ 0.0,0.0,-0.2,0.0,0.01,0.0,0.001 ]
     B0_vals = [ 1.0,0.16 ]
@@ -131,8 +131,8 @@ def fun(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[], start
         except Exception as e:
             print(e)
             objective_function = 1e3
-    n_plot = 51
-    n_save_results=1511
+    n_plot = 151
+    n_save_results=2011
     time_in_seconds = int(time.time()-start_time)
     hours = time_in_seconds // 3600
     minutes = (time_in_seconds % 3600) // 60
@@ -162,7 +162,7 @@ def obj(stel):
     weight_d = 0.5
     weight_alpha_diff = 1.0
     weight_min_geo_qi_consistency = 1e4
-    return weight_B2c_dev*np.sum(stel.B2cQI_deviation**2)/stel.nphi \
+    return weight_B2c_dev*np.sum(stel.B2cQI_deviation**2 + stel.B2sQI_deviation_max**2 + stel.B20QI_deviation**2)/stel.nphi \
          + weight_min_geo_qi_consistency*stel.min_geo_qi_consistency(order = 1)**2 \
          + weight_gradB_scale_length*np.sum((stel.inv_L_grad_B**2 + stel.grad_grad_B_inverse_scale_length_vs_varphi**2))/stel.nphi \
          + weight_B0vals*(stel.B0_vals[1]-B0_well_depth)**2 \
@@ -182,7 +182,7 @@ def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, show=True):
         if nfp==1: stel = optimized_configuration_nfp1(nphi)
         elif nfp==2: stel = optimized_configuration_nfp2(nphi)
         elif nfp==3: stel = optimized_configuration_nfp3(nphi)
-    else: stel = initial_configuration(nfp=nfp)
+    else: stel = initial_configuration(nfp=nfp, nphi=nphi)
     # stel.plot_boundary(r=0.1)
     # stel.B_contour(r=0.1)
     # exit()
@@ -195,9 +195,9 @@ def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, show=True):
                             (-0.5,0.5), (-0.1,0.1), (-0.1,0.1),
                             (-0.1,0.1), (-0.1,0.1), (-0.1,0.1)]
     dofs = [initial_dofs[stel.names.index(parameter)] for parameter in parameters_to_change]
-    method = 'Nelder-Mead'
     maxfev  = maxiter
     if not refine_optimization:
+        method = 'Nelder-Mead'
         obj_array = []
         stel.order = 'r1'
         plt.ion()
@@ -216,16 +216,22 @@ def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, show=True):
         stel.calculate()
         print_results(stel, initial_obj)
         initial_dofs = stel.get_dofs()
-    for count, X2cI in enumerate(X2c):
-        parameters_to_change.append(f'B2sc({count})')
-        bounds.append((-10,10))
-        parameters_to_change.append(f'B2cs({count})')
-        bounds.append((-10,10))
+        for count, X2cI in enumerate(X2c):
+            parameters_to_change.append(f'B2sc({count})')
+            bounds.append((-10,10))
+            parameters_to_change.append(f'B2cs({count})')
+            bounds.append((-10,10))
+    else:
+        for count, X2cI in enumerate(stel.B2c_cvals):
+            parameters_to_change.append(f'B2sc({count})')
+            bounds.append((-10,10))
+            parameters_to_change.append(f'B2cs({count})')
+            bounds.append((-10,10))
     dofs = [initial_dofs[stel.names.index(parameter)] for parameter in parameters_to_change]
-    from scipy.optimize import least_squares, basinhopping, dual_annealing
-    def print_minimum(x, f, context):
-        print('New minimum found!')
-        print_results(stel, initial_obj, Print=False)
+    # from scipy.optimize import least_squares, basinhopping, dual_annealing
+    # def print_minimum(x, f, context):
+    #     print('New minimum found!')
+    #     print_results(stel, initial_obj, Print=False)
     obj_array = []
     plt.ion()
     fig, ax = plt.subplots()
