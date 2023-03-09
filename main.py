@@ -167,7 +167,7 @@ def fun(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[], start
         print_results(stel, 0, Print=False)
     return objective_function
 
-def obj(stel, weight_XYZ2 = 1.0, weight_B2c_dev = 2e2, weight_B20cs = 0.05, weight_gradgradB_scale_length = 3.0, weight_min_geo_qi_consistency = 1e5):
+def obj(stel, weight_XYZ2 = 1.0, weight_B2c_dev = 5e2, weight_B20cs = 0.05, weight_gradgradB_scale_length = 3.0, weight_min_geo_qi_consistency = 1e5):
     weight_B0vals = 1e4
     B0_well_depth = 0.21
     weight_d_at_0 = 1
@@ -329,7 +329,7 @@ def assess_performance(nfp=1, r=0.1, nphi=201, delete_old=False):
     except: vmec = Vmec(vmec_input, mpi=mpi)
     vmec.indata.ns_array[:3]    = [  16,    51,    101]
     vmec.indata.niter_array[:3] = [ 4000, 10000, 20000]
-    vmec.indata.ftol_array[:3]  = [1e-12, 1e-12, 8e-13]
+    vmec.indata.ftol_array[:3]  = [1e-12, 1e-12, 2e-12]
     vmec.run()
     ## PLOT VMEC
     try: vmecPlot2.main(file=vmec.output_file, name=f'qic_nfp{nfp}', figures_folder=OUT_DIR)
