@@ -44,16 +44,16 @@ def plot_results(stel, show=False):
     if show: plt.show()
 
 def initial_configuration(nphi=131,order = 'r3',nfp=1):
-    rc      = [ 1.0,0.0,-0.3,0.0,0.01,0.0,0.001 ]
-    zs      = [ 0.0,0.0,-0.2,0.0,0.01,0.0,0.001 ]
-    B0_vals = [ 1.0,0.16 ]
+    rc      = [1.0,0.0,-0.4040696313018818,0.0,0.07755749973959933,0.0,-0.008057549704426478,0.0,0.0]
+    zs      = [0.0,0.0,-0.29104904753379557,0.0,0.07752373190797247,0.0,-0.008533928685817812,0.0,-0.0010027209388187785]
+    B0_vals = [1.0,0.22412962795582955]
     omn_method ='non-zone-fourier'
     k_buffer = 1
     p_buffer = 2
     delta = 0.1
-    d_over_curvature_cvals = [0.5,0.001,0.001,0,0,0]
-    X2s_cvals = [ 0.01,0.01,0.01,0,0,0,0 ]
-    X2c_svals = [ 0.0,0.01,0.01,0.01,0,0,0,0 ]
+    d_over_curvature_cvals = [0.5009213028407661,-0.002733606023762203,0.05528782052633412,0.005757579365361193,0.007003618360458123,-0.008678277763175602,0.00024952062542589037]
+    X2s_cvals = [-0.005, 0.001,0.001]
+    X2c_svals = [-0.005,0.001,0.001]
     return Qic(omn_method = omn_method, delta=delta, p_buffer=p_buffer, k_buffer=k_buffer, rc=rc,zs=zs, nfp=nfp, B0_vals=B0_vals, nphi=nphi, omn=True, order=order, d_over_curvature_cvals=d_over_curvature_cvals, B2c_svals=X2c_svals, B2s_cvals=X2s_cvals)
 
 def print_results(stel,initial_obj=0, Print=True):
@@ -109,14 +109,31 @@ def fun(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[], start
         new_dofs[stel.names.index(parameter)] = dofs[count]
     stel.set_dofs(new_dofs)
     if stel.order=='r1':
-        objective_function = stel.min_geo_qi_consistency(order = 2)
-        print(f"fun#{info['Nfeval']} -",
-            f"min_geo_qi_consistency = {objective_function}")
+        min_geo_qi_consistency = stel.min_geo_qi_consistency(order = 1)
+        X2c, X2s = evaluate_X2c_X2s_QI(stel, X2s_in=0)
+        objective_function = min_geo_qi_consistency + 1e-2*np.max(X2c) + 1e-1*(stel.B0_vals[1]-0.21)**2 + 1e-2*np.max(stel.elongation)
+        # objective_function = np.max(X2c)+np.max(X2s)
+        print(f"fun#{info['Nfeval']} r1 -",
+            f"min_geo_qi_consistency = {min_geo_qi_consistency:1f}, max(X2c) = {np.max(X2c):1f}")
+        obj_array.append(objective_function)
+    elif stel.order=='r2':
+        objective_function=obj(stel,weight_XYZ2=0.5, weight_B2c_dev=1e2, weight_B20cs=0, weight_gradgradB_scale_length=0.5, weight_min_geo_qi_consistency = 1e5)
+        print(f"fun#{info['Nfeval']} r2 -",
+            # f"\N{GREEK CAPITAL LETTER DELTA}B20 = {stel.B20QI_deviation_max:.2f},",
+            # f"\N{GREEK CAPITAL LETTER DELTA}B2s = {stel.B2sQI_deviation_max:.2f},",
+            f"\N{GREEK CAPITAL LETTER DELTA}B2c = {stel.B2cQI_deviation_max:.2f},",
+            f"1/L\N{GREEK CAPITAL LETTER DELTA}B = {np.max(stel.inv_L_grad_B):.2f},",
+            f"1/L\N{GREEK CAPITAL LETTER DELTA}\N{GREEK CAPITAL LETTER DELTA}B = {stel.grad_grad_B_inverse_scale_length:.2f},",
+            f"B0(1) = {stel.B0_vals[1]:.2f},",
+            f"max(elong) = {stel.max_elongation:.2f},",
+            f"max(X20,Y20) = {max(abs(stel.X20)):.2f},{max(abs(stel.Y20)):.2f}",
+            f"\N{GREEK CAPITAL LETTER DELTA}\N{GREEK SMALL LETTER ALPHA} = {max(abs(stel.alpha - stel.alpha_no_buffer)):.2f},",
+            f"J = {objective_function:.2f}")
         obj_array.append(objective_function)
     else:
         try:
             objective_function = obj(stel)
-            print(f"fun#{info['Nfeval']} -",
+            print(f"fun#{info['Nfeval']} r3 -",
                 # f"\N{GREEK CAPITAL LETTER DELTA}B20 = {stel.B20QI_deviation_max:.2f},",
                 # f"\N{GREEK CAPITAL LETTER DELTA}B2s = {stel.B2sQI_deviation_max:.2f},",
                 f"\N{GREEK CAPITAL LETTER DELTA}B2c = {stel.B2cQI_deviation_max:.2f},",
@@ -124,7 +141,7 @@ def fun(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[], start
                 f"1/L\N{GREEK CAPITAL LETTER DELTA}\N{GREEK CAPITAL LETTER DELTA}B = {stel.grad_grad_B_inverse_scale_length:.2f},",
                 f"B0(1) = {stel.B0_vals[1]:.2f},",
                 f"max(elong) = {stel.max_elongation:.2f},",
-                f"max(Y20) = {max(abs(stel.Y20)):.2f},",
+                f"max(X20,Y20) = {max(abs(stel.X20)):.2f},{max(abs(stel.Y20)):.2f}",
                 f"\N{GREEK CAPITAL LETTER DELTA}\N{GREEK SMALL LETTER ALPHA} = {max(abs(stel.alpha - stel.alpha_no_buffer)):.2f},",
                 f"J = {objective_function:.2f}")
             obj_array.append(objective_function)
@@ -150,21 +167,18 @@ def fun(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[], start
         print_results(stel, 0, Print=False)
     return objective_function
 
-def obj(stel):
-    weight_XYZ2 = 0.3
-    weight_B0vals = 1e5
+def obj(stel, weight_XYZ2 = 1.0, weight_B2c_dev = 2e2, weight_B20cs = 0.05, weight_gradgradB_scale_length = 3.0, weight_min_geo_qi_consistency = 1e5):
+    weight_B0vals = 1e4
     B0_well_depth = 0.21
-    weight_B2c_dev = 1e2
     weight_d_at_0 = 1
-    weight_B20cs = 0.1
-    weight_gradB_scale_length = 0.04
+    weight_gradB_scale_length = 0.05
     weight_elongation = 0.3
     weight_d = 0.5
     weight_alpha_diff = 1.0
-    weight_min_geo_qi_consistency = 1e4
     return weight_B2c_dev*np.sum(stel.B2cQI_deviation**2 + stel.B2sQI_deviation_max**2 + stel.B20QI_deviation**2)/stel.nphi \
-         + weight_min_geo_qi_consistency*stel.min_geo_qi_consistency(order = 1)**2 \
-         + weight_gradB_scale_length*np.sum((stel.inv_L_grad_B**2 + stel.grad_grad_B_inverse_scale_length_vs_varphi**2))/stel.nphi \
+         + weight_min_geo_qi_consistency*stel.min_geo_qi_consistency(order = 1) \
+         + weight_gradB_scale_length*np.sum(stel.inv_L_grad_B**2) \
+         + weight_gradgradB_scale_length*np.sum(stel.grad_grad_B_inverse_scale_length_vs_varphi**2)/stel.nphi \
          + weight_B0vals*(stel.B0_vals[1]-B0_well_depth)**2 \
          + weight_elongation*np.sum(stel.elongation**2)/stel.nphi \
          + weight_XYZ2*np.sum(stel.X20**2 + stel.X2c**2 + stel.X2s**2
@@ -186,28 +200,60 @@ def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, show=True):
     # stel.plot_boundary(r=0.1)
     # stel.B_contour(r=0.1)
     # exit()
+    start_time = time.time()
     initial_obj = obj(stel)
     initial_dofs = stel.get_dofs()
-    parameters_to_change = (['zs(2)',   'B0(1)',    'zs(4)',    'rc(2)',   'zs(6)',     'rc(4)',
+    obj_array = []
+    stel.order = 'r2'
+    stel._set_names()
+    stel.calculate()
+    parameters_to_change = (['B0(1)','rc(2)','zs(2)','rc(4)','zs(4)','zs(6)','zs(8)',
                              'd_over_curvaturec(0)','d_over_curvaturec(1)','d_over_curvaturec(2)',
-                             'd_over_curvaturec(3)','d_over_curvaturec(4)','d_over_curvaturec(5)'])
-    bounds =               [(-0.3,0.3), (0.1,0.22),(-0.05,0.05),(-0.3,0.3),(-0.01,0.01),(-0.05,0.05),
-                            (-0.5,0.5), (-0.1,0.1), (-0.1,0.1),
-                            (-0.1,0.1), (-0.1,0.1), (-0.1,0.1)]
+                             'd_over_curvaturec(3)','d_over_curvaturec(4)','d_over_curvaturec(5)','d_over_curvaturec(6)'])
     dofs = [initial_dofs[stel.names.index(parameter)] for parameter in parameters_to_change]
+    bounds = ([0.1,-0.5,-0.5,-0.05,-0.1,-0.05,-0.001,-0.9,-0.9,-0.9,-0.9,-0.9,-0.9],[0.3,0.5,0.5,0.1,0.1,0.05,0.001,0.9,0.9,0.9,0.9,0.9,0.9])
+    # bounds =          ([(-0.3,0.3), (0.1,0.3),(-0.05,0.05),(-0.3,0.3),(-0.01,0.01),(-0.05,0.05),(-0.05,0.05),
+    #                     (-0.5,0.5), (-0.1,0.1), (-0.1,0.1),
+    #                     (-0.1,0.1), (-0.1,0.1), (-0.1,0.1)])
     maxfev  = maxiter
+    plt.ion()
+    fig, ax = plt.subplots()
+    # from scipy.optimize import least_squares, basinhopping, dual_annealing
+    # res = least_squares(fun, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array), method='trf', ftol=1e-4, max_nfev=maxfev, diff_step=0.6, jac='3-point', bounds=bounds)
+    # exit()
+    # print_results(stel, initial_obj, Print=False)
+    method = 'Nelder-Mead'
+    res = minimize(fun, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array, start_time), method=method, tol=1e-4, options={'maxiter': maxiter, 'maxfev': maxfev, 'disp': True})
+    print_results(stel, initial_obj, Print=False)
+    # res = least_squares(fun, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array), method='trf', ftol=1e-4, max_nfev=maxfev, diff_step=0.3, jac='3-point', bounds=bounds)
+    # print_results(stel, initial_obj, Print=False)
+    plt.close()
+    parameters_to_change = ([#'B0(1)',  'zs(4)',    'zs(6)',     'rc(4)',   'zs(2)',   'rc(2)',   'zs(8)',
+                             'd_over_curvaturec(0)','d_over_curvaturec(1)','d_over_curvaturec(2)',
+                             'd_over_curvaturec(3)','d_over_curvaturec(4)','d_over_curvaturec(5)','d_over_curvaturec(6)'])
+    dofs = [initial_dofs[stel.names.index(parameter)] for parameter in parameters_to_change]
     if not refine_optimization:
         method = 'Nelder-Mead'
         obj_array = []
         stel.order = 'r1'
+        stel._set_names()
+        stel.calculate()
         plt.ion()
         fig, ax = plt.subplots()
         plt.plot(obj_array);plt.xlabel('Iteration');plt.ylabel('ln(Function Value)')
         start_time = time.time()
-        res = minimize(fun, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array, start_time), method=method, tol=1e-4, options={'maxiter': maxiter, 'maxfev': maxfev, 'disp': True})
+        # res = least_squares(fun, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array), method='trf', ftol=1e-4, max_nfev=maxfev, diff_step=0.9)
+        # res = minimize(fun, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array, start_time), method=method, tol=1e-5, options={'maxiter': maxiter, 'maxfev': maxfev, 'disp': True})
         plt.savefig(os.path.join(this_path,f'order1_opt_nfp{stel.nfp}.pdf'))
         plt.close()
-    X2c, X2s = evaluate_X2c_X2s_QI(stel, X2s_in=0)
+    parameters_to_change = (['B0(1)',  'zs(4)',    'zs(6)',     'rc(4)',   'zs(2)',   'rc(2)',   'zs(8)',
+                             'd_over_curvaturec(0)','d_over_curvaturec(1)','d_over_curvaturec(2)',
+                             'd_over_curvaturec(3)','d_over_curvaturec(4)','d_over_curvaturec(5)','d_over_curvaturec(6)'])
+    initial_dofs = stel.get_dofs()
+    dofs = [initial_dofs[stel.names.index(parameter)] for parameter in parameters_to_change]
+    # X2c, X2s = evaluate_X2c_X2s_QI(stel, X2s_in=0)
+    X2c = stel.B2c_svals
+    X2s = stel.B2s_cvals
     if not refine_optimization:
         stel.order = 'r3'
         stel.B2c_svals=X2c
@@ -218,15 +264,18 @@ def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, show=True):
         initial_dofs = stel.get_dofs()
         for count, X2cI in enumerate(X2c):
             parameters_to_change.append(f'B2sc({count})')
-            bounds.append((-10,10))
             parameters_to_change.append(f'B2cs({count})')
-            bounds.append((-10,10))
     else:
+        stel.order = 'r3'
+        stel._set_names()
+        stel.calculate()
         for count, X2cI in enumerate(stel.B2c_cvals):
             parameters_to_change.append(f'B2sc({count})')
-            bounds.append((-10,10))
             parameters_to_change.append(f'B2cs({count})')
-            bounds.append((-10,10))
+    # for count, X2cI in enumerate(stel.B2c_cvals):
+    #     parameters_to_change.append(f'B2sc({count})')
+    #     parameters_to_change.append(f'B2cs({count})')
+    initial_dofs = stel.get_dofs()
     dofs = [initial_dofs[stel.names.index(parameter)] for parameter in parameters_to_change]
     # from scipy.optimize import least_squares, basinhopping, dual_annealing
     # def print_minimum(x, f, context):
