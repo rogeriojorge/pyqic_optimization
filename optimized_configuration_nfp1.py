@@ -1,33 +1,34 @@
 from qic import Qic
-def optimized_configuration_nfp1(nphi=131,order = "r2"):
-    rc      = [1.0,0.0,-0.4043530784231576,0.0,0.07796989770318574,0.0,-0.0082087261848208,0.0,0.0]
-    zs      = [0.0,0.0,-0.28170515645136573,0.0,0.07489395356568052,0.0,-0.008639693243704984,0.0,-0.0008771660185332342]
-    B0_vals = [1.0,0.23917536708517095]
+def optimized_configuration_nfp1(nphi=131,order = "r3"):
+    rc      = [1.0,0.0,-0.4041958398439419,0.0,0.07751848253178238,0.0,-0.00802256767082678,0.0,0.0]
+    zs      = [0.0,0.0,-0.299184408401245,0.0,0.07741139549742956,0.0,-0.008554281186283486,0.0,-0.0010309260577591925]
+    B0_vals = [1.0,0.22460886029993674]
     omn_method = "non-zone-fourier"
     k_buffer = 1
     p_buffer = 2
-    d_over_curvature_cvals = [0.4862371848884042,-0.00010182544360597817,0.08413289840672383,0.0020309972182432348,0.010274873318007867,-0.007138714072450926,0.0011484005727599674]
+    d_over_curvature_cvals = []
+    d_over_curvature_spline = [0.5000090055301087,0.5001037632148113,0.5000336312644341,0.5000194827944477,0.5002557020545435,0.5002284396573776,0.5001201778462543,0.4958245453366918,0.4945383434872017,0.49720133478604284,0.5059487614175792,0.5037074672045785,0.5054440986066927,0.506328575379041,0.5000834496968578,0.5064547859627297,0.5035684814342676,0.4999974542548494,0.5050945377241538,0.5054067037301911,0.498582996228408,0.5025119709346295,0.4997261965282635,0.5010319981709894,0.5004664620956796,0.49987508428874194,0.49999448961200366,0.5000865203636086,0.4999958457828366,0.500024472767505]
     delta   = 0.1
     d_svals = []
     nfp     = 1
-    iota    = -0.6737673855885551
+    iota    = -0.6882042063365368
     X2s_svals = []
     X2c_cvals = [0.0]
-    X2s_cvals = [-0.6271500414819506,-0.02256964765045181,-0.018529490303029625]
-    X2c_svals = [0.12838986197355845,0.001726448479794137,-0.008327796453206457]
+    X2s_cvals = [-0.005006899201462137,0.0010013798402924287,0.0010013798402924291]
+    X2c_svals = [-0.005006899201462137,0.0010013798402924291,0.0010013798402924291]
     p2      = 0.0
-    # B20QI_deviation_max = 0.0008180426186374379
-    # B2cQI_deviation_max = 0.9108071953255299
-    # B2sQI_deviation_max = 0.0066976868535926215
-    # Max |X20| = 0.2566216444280103
-    # Max |Y20| = 4.590465644855988
-    # Max |X3c1| = 0.10330990818888183
-    # gradgradB inverse length: 3.085753958818333
-    # d2_volume_d_psi2 = 98.13908466516114
-    # max curvature_d(0) = 0.8996195319922696
-    # max d_d(0) = 0.5186290568762595
-    # max gradB inverse length: 1.5451570170055415
-    # Max elongation = 6.9079245286286195
-    # Initial objective = 162.675311372933
-    # Final objective = 152.88196086017373
-    return Qic(omn_method = omn_method, delta=delta, p_buffer=p_buffer, p2=p2, k_buffer=k_buffer, rc=rc,zs=zs, nfp=nfp, B0_vals=B0_vals, d_svals=d_svals, nphi=nphi, omn=True, B2c_cvals=X2c_cvals, B2s_svals=X2s_svals, order=order, d_over_curvature_cvals=d_over_curvature_cvals, B2c_svals=X2c_svals, B2s_cvals=X2s_cvals)
+    # B20QI_deviation_max = 0.41121140952331436
+    # B2cQI_deviation_max = 2.411620019188627
+    # B2sQI_deviation_max = 0.28263074185361475
+    # Max |X20| = 0.27181821748507456
+    # Max |Y20| = 0.5095102200448005
+    # Max |X3c1| = 0.06722964959054993
+    # gradgradB inverse length: 3.9281335152594683
+    # d2_volume_d_psi2 = 170.79204746100623
+    # max curvature_d(0) = 1.029922366464768
+    # max d_d(0) = 0.5135440980417894
+    # max gradB inverse length: 1.5074565462951959
+    # Max elongation = 5.34358432318849
+    # Initial objective = 44409.905596513076
+    # Final objective = 1418.977021555898
+    return Qic(omn_method = omn_method, delta=delta, p_buffer=p_buffer, p2=p2, k_buffer=k_buffer, rc=rc,zs=zs, nfp=nfp, B0_vals=B0_vals, d_svals=d_svals, nphi=nphi, omn=True, B2c_cvals=X2c_cvals, B2s_svals=X2s_svals, order=order, d_over_curvature_cvals=d_over_curvature_cvals, B2c_svals=X2c_svals, B2s_cvals=X2s_cvals, d_over_curvature_spline=d_over_curvature_spline)

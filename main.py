@@ -51,14 +51,17 @@ def initial_configuration(nphi=131,order = 'r3',nfp=1):
     k_buffer = 1
     p_buffer = 2
     delta = 0.1
-    d_over_curvature_cvals = [0.5009213028407661,-0.002733606023762203,0.05528782052633412,0.005757579365361193,0.007003618360458123,-0.008678277763175602,0.00024952062542589037]
+    # d_over_curvature_cvals = [0.5009213028407661,-0.002733606023762203,0.05528782052633412,0.005757579365361193,0.007003618360458123,-0.008678277763175602,0.00024952062542589037]
+    d_over_curvature_cvals = []
+    N_d_over_curvature_spline = 30
+    d_over_curvature_spline = [0.5]*N_d_over_curvature_spline
     X2s_cvals = [-0.005, 0.001,0.001]
     X2c_svals = [-0.005,0.001,0.001]
-    return Qic(omn_method = omn_method, delta=delta, p_buffer=p_buffer, k_buffer=k_buffer, rc=rc,zs=zs, nfp=nfp, B0_vals=B0_vals, nphi=nphi, omn=True, order=order, d_over_curvature_cvals=d_over_curvature_cvals, B2c_svals=X2c_svals, B2s_cvals=X2s_cvals)
+    return Qic(omn_method = omn_method, delta=delta, p_buffer=p_buffer, k_buffer=k_buffer, rc=rc,zs=zs, nfp=nfp, B0_vals=B0_vals, nphi=nphi, omn=True, order=order, d_over_curvature_cvals=d_over_curvature_cvals, B2c_svals=X2c_svals, B2s_cvals=X2s_cvals, d_over_curvature_spline=d_over_curvature_spline)
 
 def print_results(stel,initial_obj=0, Print=True):
     out_txt  = f'from qic import Qic\n'
-    out_txt += f'def optimized_configuration_nfp{stel.nfp}(nphi=131,order = "r2"):\n'
+    out_txt += f'def optimized_configuration_nfp{stel.nfp}(nphi=131,order = "r3"):\n'
     out_txt += f'    rc      = [{",".join([str(elem) for elem in stel.rc])}]\n'
     out_txt += f'    zs      = [{",".join([str(elem) for elem in stel.zs])}]\n'
     out_txt += f'    B0_vals = [{",".join([str(elem) for elem in stel.B0_vals])}]\n'
@@ -66,6 +69,7 @@ def print_results(stel,initial_obj=0, Print=True):
     out_txt += f'    k_buffer = {stel.k_buffer}\n'
     out_txt += f'    p_buffer = {stel.p_buffer}\n'
     out_txt += f'    d_over_curvature_cvals = [{",".join([str(elem) for elem in stel.d_over_curvature_cvals])}]\n'
+    out_txt += f'    d_over_curvature_spline = [{",".join([str(elem) for elem in stel.d_over_curvature_spline])}]\n'
     out_txt += f'    delta   = {stel.delta}\n'
     out_txt += f'    d_svals = [{",".join([str(elem) for elem in stel.d_svals])}]\n'
     out_txt += f'    nfp     = {stel.nfp}\n'
@@ -96,7 +100,7 @@ def print_results(stel,initial_obj=0, Print=True):
     if not initial_obj==0:
         out_txt += f'    # Initial objective = {initial_obj}\n'
     out_txt += f'    # Final objective = {obj(stel)}\n'
-    out_txt += f'    return Qic(omn_method = omn_method, delta=delta, p_buffer=p_buffer, p2=p2, k_buffer=k_buffer, rc=rc,zs=zs, nfp=nfp, B0_vals=B0_vals, d_svals=d_svals, nphi=nphi, omn=True, B2c_cvals=X2c_cvals, B2s_svals=X2s_svals, order=order, d_over_curvature_cvals=d_over_curvature_cvals, B2c_svals=X2c_svals, B2s_cvals=X2s_cvals)'
+    out_txt += f'    return Qic(omn_method = omn_method, delta=delta, p_buffer=p_buffer, p2=p2, k_buffer=k_buffer, rc=rc,zs=zs, nfp=nfp, B0_vals=B0_vals, d_svals=d_svals, nphi=nphi, omn=True, B2c_cvals=X2c_cvals, B2s_svals=X2s_svals, order=order, d_over_curvature_cvals=d_over_curvature_cvals, B2c_svals=X2c_svals, B2s_cvals=X2s_cvals, d_over_curvature_spline=d_over_curvature_spline)'
     with open(os.path.join(this_path,f'optimized_configuration_nfp{stel.nfp}.py'), 'w') as f:
         f.write(out_txt)
     if Print: print(out_txt)
@@ -148,7 +152,7 @@ def fun(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[], start
         except Exception as e:
             print(e)
             objective_function = 1e3
-    n_plot = 151
+    n_plot = 51
     n_save_results=2011
     time_in_seconds = int(time.time()-start_time)
     hours = time_in_seconds // 3600
@@ -197,19 +201,26 @@ def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, show=True):
         elif nfp==2: stel = optimized_configuration_nfp2(nphi)
         elif nfp==3: stel = optimized_configuration_nfp3(nphi)
     else: stel = initial_configuration(nfp=nfp, nphi=nphi)
-    # stel.plot_boundary(r=0.1)
-    # stel.B_contour(r=0.1)
-    # exit()
+    stel.plot_boundary(r=0.1)
+    stel.B_contour(r=0.1)
+    exit()
     start_time = time.time()
     initial_obj = obj(stel)
     initial_dofs = stel.get_dofs()
+
+    N_d_over_curvature_spline = len(stel.d_over_curvature_spline)
+
     obj_array = []
     stel.order = 'r2'
     stel._set_names()
     stel.calculate()
-    parameters_to_change = (['B0(1)','rc(2)','zs(2)','rc(4)','zs(4)','zs(6)','zs(8)',
-                             'd_over_curvaturec(0)','d_over_curvaturec(1)','d_over_curvaturec(2)',
-                             'd_over_curvaturec(3)','d_over_curvaturec(4)','d_over_curvaturec(5)','d_over_curvaturec(6)'])
+    parameters_to_change = (['B0(1)','rc(2)','zs(2)','rc(4)','zs(4)','zs(6)','zs(8)'])
+    [parameters_to_change.append(f'd_over_curvature_spline({i})') for i in range(N_d_over_curvature_spline)]
+                            #  'd_over_curvature_spline(0)', 'd_over_curvature_spline(1)', 'd_over_curvature_spline(2)',
+                            #  'd_over_curvature_spline(3)', 'd_over_curvature_spline(4)', 'd_over_curvature_spline(5)',
+                            #  'd_over_curvature_spline(6)'])
+                            #  'd_over_curvaturec(0)','d_over_curvaturec(1)','d_over_curvaturec(2)',
+                            #  'd_over_curvaturec(3)','d_over_curvaturec(4)','d_over_curvaturec(5)','d_over_curvaturec(6)'])
     dofs = [initial_dofs[stel.names.index(parameter)] for parameter in parameters_to_change]
     bounds = ([0.1,-0.5,-0.5,-0.05,-0.1,-0.05,-0.001,-0.9,-0.9,-0.9,-0.9,-0.9,-0.9],[0.3,0.5,0.5,0.1,0.1,0.05,0.001,0.9,0.9,0.9,0.9,0.9,0.9])
     # bounds =          ([(-0.3,0.3), (0.1,0.3),(-0.05,0.05),(-0.3,0.3),(-0.01,0.01),(-0.05,0.05),(-0.05,0.05),
@@ -228,9 +239,15 @@ def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, show=True):
     # res = least_squares(fun, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array), method='trf', ftol=1e-4, max_nfev=maxfev, diff_step=0.3, jac='3-point', bounds=bounds)
     # print_results(stel, initial_obj, Print=False)
     plt.close()
-    parameters_to_change = ([#'B0(1)',  'zs(4)',    'zs(6)',     'rc(4)',   'zs(2)',   'rc(2)',   'zs(8)',
-                             'd_over_curvaturec(0)','d_over_curvaturec(1)','d_over_curvaturec(2)',
-                             'd_over_curvaturec(3)','d_over_curvaturec(4)','d_over_curvaturec(5)','d_over_curvaturec(6)'])
+
+    parameters_to_change = []
+    [parameters_to_change.append(f'd_over_curvature_spline({i})') for i in range(N_d_over_curvature_spline)]
+    # parameters_to_change = ([#'B0(1)',  'zs(4)',    'zs(6)',     'rc(4)',   'zs(2)',   'rc(2)',   'zs(8)',
+    #                          'd_over_curvature_spline(0)', 'd_over_curvature_spline(1)', 'd_over_curvature_spline(2)',
+    #                          'd_over_curvature_spline(3)', 'd_over_curvature_spline(4)', 'd_over_curvature_spline(5)',
+    #                          'd_over_curvature_spline(6)'])
+    #                         #  'd_over_curvaturec(0)','d_over_curvaturec(1)','d_over_curvaturec(2)',
+    #                         #  'd_over_curvaturec(3)','d_over_curvaturec(4)','d_over_curvaturec(5)','d_over_curvaturec(6)'])
     dofs = [initial_dofs[stel.names.index(parameter)] for parameter in parameters_to_change]
     if not refine_optimization:
         method = 'Nelder-Mead'
@@ -243,12 +260,16 @@ def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, show=True):
         plt.plot(obj_array);plt.xlabel('Iteration');plt.ylabel('ln(Function Value)')
         start_time = time.time()
         # res = least_squares(fun, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array), method='trf', ftol=1e-4, max_nfev=maxfev, diff_step=0.9)
-        # res = minimize(fun, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array, start_time), method=method, tol=1e-5, options={'maxiter': maxiter, 'maxfev': maxfev, 'disp': True})
+        res = minimize(fun, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array, start_time), method=method, tol=1e-5, options={'maxiter': maxiter, 'maxfev': maxfev, 'disp': True})
         plt.savefig(os.path.join(this_path,f'order1_opt_nfp{stel.nfp}.pdf'))
         plt.close()
-    parameters_to_change = (['B0(1)',  'zs(4)',    'zs(6)',     'rc(4)',   'zs(2)',   'rc(2)',   'zs(8)',
-                             'd_over_curvaturec(0)','d_over_curvaturec(1)','d_over_curvaturec(2)',
-                             'd_over_curvaturec(3)','d_over_curvaturec(4)','d_over_curvaturec(5)','d_over_curvaturec(6)'])
+    parameters_to_change = (['B0(1)',  'zs(4)',    'zs(6)',     'rc(4)',   'zs(2)',   'rc(2)',   'zs(8)'])
+    [parameters_to_change.append(f'd_over_curvature_spline({i})') for i in range(N_d_over_curvature_spline)]
+                            #  'd_over_curvature_spline(0)', 'd_over_curvature_spline(1)', 'd_over_curvature_spline(2)',
+                            #  'd_over_curvature_spline(3)', 'd_over_curvature_spline(4)', 'd_over_curvature_spline(5)',
+                            #  'd_over_curvature_spline(6)'])
+                            #  'd_over_curvaturec(0)','d_over_curvaturec(1)','d_over_curvaturec(2)',
+                            #  'd_over_curvaturec(3)','d_over_curvaturec(4)','d_over_curvaturec(5)','d_over_curvaturec(6)'])
     initial_dofs = stel.get_dofs()
     dofs = [initial_dofs[stel.names.index(parameter)] for parameter in parameters_to_change]
     # X2c, X2s = evaluate_X2c_X2s_QI(stel, X2s_in=0)
