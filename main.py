@@ -178,7 +178,7 @@ def obj(stel, weight_XYZ2 = 1.0, weight_B2c_dev = 5e2, weight_B20cs = 0.05, weig
     weight_gradB_scale_length = 0.05
     weight_elongation = 0.3
     weight_d = 0.5
-    weight_alpha_diff = 1.0
+    weight_alpha_diff = 0.1
     return weight_B2c_dev*np.sum(stel.B2cQI_deviation**2 + stel.B2sQI_deviation_max**2 + stel.B20QI_deviation**2)/stel.nphi \
          + weight_min_geo_qi_consistency*stel.min_geo_qi_consistency(order = 1) \
          + weight_gradB_scale_length*np.sum(stel.inv_L_grad_B**2) \
