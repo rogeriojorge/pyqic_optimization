@@ -205,16 +205,16 @@ def obj_r3(stel, B0_well_depth=0.20):
          + weight_elongation*np.sum(stel.elongation**2)/stel.nphi
          + weight_B2c_dev*np.sum(stel.B2cQI_deviation**2 + stel.B2sQI_deviation_max**2 + stel.B20QI_deviation**2)/stel.nphi
          + weight_min_geo_qi_consistency*stel.min_geo_qi_consistency(order = 1)
-         + weight_d*np.sum(stel.d**2)/stel.nphi
-         + weight_d_at_0*stel.d_curvature_d_varphi_at_0**2
-         + weight_d_at_0*stel.d_d_d_varphi_at_0**2
-         + weight_B20cs*np.sum(stel.B20**2 + stel.B2c**2 + stel.B2s**2)/stel.nphi
-         + weight_XYZ2*(np.max(stel.X20)+np.max(stel.X2c)+np.max(stel.X2s)
-                       +np.max(stel.Y20)+np.max(stel.Y2c)+np.max(stel.Y2s)
-                       +np.max(stel.Z20)+np.max(stel.Z2c)+np.max(stel.Z2s))**2
-         + weight_XYZ3*(np.max(stel.X3c1)+np.max(stel.X3s1)
-                      +np.max(stel.Y3c1)+np.max(stel.Y3s1))**2
-         + weight_alpha_diff*np.sum((stel.alpha - stel.alpha_no_buffer)**2)/stel.nphi
+        #  + weight_d*np.sum(stel.d**2)/stel.nphi
+        #  + weight_d_at_0*stel.d_curvature_d_varphi_at_0**2
+        #  + weight_d_at_0*stel.d_d_d_varphi_at_0**2
+        #  + weight_B20cs*np.sum(stel.B20**2 + stel.B2c**2 + stel.B2s**2)/stel.nphi
+        #  + weight_XYZ2*(np.max(stel.X20)+np.max(stel.X2c)+np.max(stel.X2s)
+        #                +np.max(stel.Y20)+np.max(stel.Y2c)+np.max(stel.Y2s)
+        #                +np.max(stel.Z20)+np.max(stel.Z2c)+np.max(stel.Z2s))**2
+        #  + weight_XYZ3*(np.max(stel.X3c1)+np.max(stel.X3s1)
+        #               +np.max(stel.Y3c1)+np.max(stel.Y3s1))**2
+        #  + weight_alpha_diff*np.sum((stel.alpha - stel.alpha_no_buffer)**2)/stel.nphi
     )
 
 def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, B01=0.20, N_d_over_curvature_spline=6, OUT_DIR=os.path.join(this_path,f'qic_nfp1'), show=True):
