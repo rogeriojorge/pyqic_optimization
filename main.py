@@ -52,7 +52,7 @@ def initial_configuration(nphi=131,order = 'r3',nfp=1):
     p_buffer = 2
     delta = 0.1
     d_over_curvature_cvals = []
-    N_d_over_curvature_spline = 7
+    N_d_over_curvature_spline = 6
     d_over_curvature_spline = [0.5]*N_d_over_curvature_spline
     X2s_cvals = [0.001]*nphi
     X2c_svals = [0.001]*nphi
@@ -122,7 +122,7 @@ def fun(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[], start
             + f"max(X2c) = {np.max(X2c):1f}, max(X2s) = {np.max(X2s):1f}, "
             + f"B0(1) = {stel.B0_vals[1]:.2f}, "
             + f"J = {objective_function:.2f}")
-        if objective_function < 2e-0 and min_geo_qi_consistency<1e-4:
+        if objective_function < 1e-0 and min_geo_qi_consistency<1e-4:
             stel.order = 'r2'
     else:
         stel.order='r1'
