@@ -4,7 +4,7 @@
 out           ! Boozer output file to utilize in calculation.
 neo_out.out         ! NEO output file name
  9                  ! Number of surfaces on which to conduct calculation
- 2 12 22 32 41 62 72 81 91 101! Surfaces on which calculation is to be conducted (number must match above number)
+ 2 6 12 17 22 26 32 37 41 46! Surfaces on which calculation is to be conducted (number must match above number)
  200                ! Number of points in theta (>100)
  200                ! Number of points in zeta (>100)
  0                  ! Maximum poloidal mode number
