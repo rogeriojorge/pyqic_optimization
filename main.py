@@ -44,9 +44,9 @@ def plot_results(stel, show=False):
     if show: plt.show()
 
 def initial_configuration(nphi=131,order = 'r3',nfp=1, N_d_over_curvature_spline=6):
-    rc      = [1.0,0.0,-0.22,0.0,0.00265,0.0,0.00149,0.0,0.0]
-    zs      = [0.0,0.0,-0.35,0.0,-0.00726,0.0,0.00556,0.0,1.13e-05]
-    B0_vals = [1.0,0.23]
+    rc      = [1.0,0.0,-0.03,0.0,0.00065,0.0,0.00009,0.0,0.0]
+    zs      = [0.0,0.0,-0.03,0.0,-0.00026,0.0,0.00006,0.0,1.13e-05]
+    B0_vals = [1.0,0.18]
     omn_method ='non-zone-fourier'
     k_buffer = 1
     p_buffer = 2
