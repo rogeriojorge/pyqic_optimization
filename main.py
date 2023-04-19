@@ -187,7 +187,7 @@ def obj_r3(stel, B0_well_depth=0.20):
     weight_B0vals = 3e3
     weight_d_at_0 = 1e-4
     weight_gradB_scale_length = 5e-6
-    weight_elongation = 3e-5
+    weight_elongation = 5e-5
     weight_d = 5e-5
     weight_alpha_diff = 1e-5
     weight_gradgradB_scale_length = 5e-4
@@ -214,7 +214,7 @@ def obj_r3(stel, B0_well_depth=0.20):
                        +np.max(stel.Z20)+np.max(stel.Z2c)+np.max(stel.Z2s))**2
          + weight_XYZ3*(np.max(stel.X3c1)+np.max(stel.X3s1)
                       +np.max(stel.Y3c1)+np.max(stel.Y3s1))**2
-        #  + weight_alpha_diff*np.sum((stel.alpha - stel.alpha_no_buffer)**2)/stel.nphi
+         + weight_alpha_diff*np.sum((stel.alpha - stel.alpha_no_buffer)**2)/stel.nphi
     )
 
 def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, B01=0.20, N_d_over_curvature_spline=6, OUT_DIR=os.path.join(this_path,f'qic_nfp1'), show=True):
@@ -278,14 +278,14 @@ def assess_performance(nfp=1, r=0.1, nphi=201, delete_old=False, OUT_DIR=os.path
         os.makedirs(OUT_DIR, exist_ok=True)
     os.chdir(OUT_DIR)
     ## CREATE VMEC INPUT FILE
-    stel.to_vmec(vmec_input, r=r, ntorMax=50, params={'mpol':6, 'ntor': 15, 'ns_array': [51], 'ftol_array':[1e-13], "niter_array":[10000]})
+    stel.to_vmec(vmec_input, r=r, ntorMax=50, params={'mpol':6, 'ntor': 16, 'ns_array': [51], 'ftol_array':[1e-13], "niter_array":[10000]})
     ## RUN VMEC
     from simsopt.util import MpiPartition
     mpi = MpiPartition()
     try: vmec = Vmec(vmec_output, mpi=mpi)
     except: vmec = Vmec(vmec_input, mpi=mpi)
     vmec.indata.ns_array[:1]    = [51]
-    vmec.indata.niter_array[:1] = [10000]
+    vmec.indata.niter_array[:1] = [12000]
     vmec.indata.ftol_array[:1]  = [1e-13]
     vmec.run()
     ## PLOT VMEC
