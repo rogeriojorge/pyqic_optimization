@@ -278,15 +278,15 @@ def assess_performance(nfp=1, r=0.1, nphi=201, delete_old=False, OUT_DIR=os.path
         os.makedirs(OUT_DIR, exist_ok=True)
     os.chdir(OUT_DIR)
     ## CREATE VMEC INPUT FILE
-    stel.to_vmec(vmec_input, r=r, ntorMax=50, params={'mpol':6, 'ntor': 16, 'ns_array': [51], 'ftol_array':[1e-13], "niter_array":[10000]})
+    stel.to_vmec(vmec_input, r=r, ntorMax=50, params={'mpol':6, 'ntor': 16, 'ns_array': [51], 'ftol_array':[1e-14], "niter_array":[20000]})
     ## RUN VMEC
     from simsopt.util import MpiPartition
     mpi = MpiPartition()
     # try: vmec = Vmec(vmec_output, mpi=mpi)
     vmec = Vmec(vmec_input, mpi=mpi)
     vmec.indata.ns_array[:1]    = [51]
-    vmec.indata.niter_array[:1] = [14000]
-    vmec.indata.ftol_array[:1]  = [1e-15]
+    vmec.indata.niter_array[:1] = [20000]
+    vmec.indata.ftol_array[:1]  = [1e-14]
     vmec.run()
     ## PLOT VMEC
     try: vmecPlot2.main(file=vmec.output_file, name=f'qic_nfp{nfp}', figures_folder=OUT_DIR)
