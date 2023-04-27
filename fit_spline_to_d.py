@@ -8,7 +8,7 @@ from qic import Qic
 N_points = 7
 
 # Original configuration
-stel = Qic.from_paper("QI NFP2 r2")
+stel = Qic.from_paper("QI NFP1 r2")
 d_over_curvature = stel.d/stel.curvature
 
 # Construct interpolation for that data

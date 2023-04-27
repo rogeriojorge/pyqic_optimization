@@ -11,6 +11,7 @@ import booz_xform as bx
 from pathlib import Path
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
+from scipy import interpolate
 from qic.calculate_r2 import evaluate_X2c_X2s_QI
 from simsopt.mhd import Vmec, Boozer
 from neat.fields import Simple
@@ -44,18 +45,37 @@ def plot_results(stel, show=False):
     if show: plt.show()
 
 def initial_configuration(nphi=131,order = 'r3',nfp=1, N_d_over_curvature_spline=6):
-    rc      = [1.0,0.0,-0.03,0.0,0.00065,0.0,0.00009,0.0,0.0]
-    zs      = [0.0,0.0,-0.03,0.0,-0.00026,0.0,0.00006,0.0,1.13e-05]
-    B0_vals = [1.0,0.18]
-    omn_method ='non-zone-fourier'
-    k_buffer = 1
-    p_buffer = 2
-    delta = 0.1
+    # rc      = [ 1.0,0.0,-0.41599809655680886,0.0,0.08291443961920232,0.0,-0.008906891641686355,0.0,0.0,0.0,0.0,0.0,0.0 ]
+    # zs      = [ 0.0,0.0,-0.28721210154364263,0.0,0.08425262593215394,0.0,-0.010427621520053335,0.0,-0.0008921610906627226,0.0,-6.357200965811029e-07,0.0,2.7316247301500753e-07 ]
+    # B0_vals = [1.0,0.18]
+    # omn_method ='non-zone-fourier'
+    # k_buffer = 1
+    # p_buffer = 2
+    # delta = 0.1
+    # d_over_curvature_spline = [0.5]*N_d_over_curvature_spline
+    # X2s_cvals = [0.001]*nphi
+    # X2c_svals = [0.001]*nphi
+    if nfp==1: stel_initial = Qic.from_paper('QI NFP1 r2', nphi=nphi)
+    else: stel_initial = Qic.from_paper('QI NFP2 r2', nphi=nphi)
     d_over_curvature_cvals = []
-    d_over_curvature_spline = [0.5]*N_d_over_curvature_spline
-    X2s_cvals = [0.001]*nphi
-    X2c_svals = [0.001]*nphi
-    return Qic(omn_method = omn_method, delta=delta, p_buffer=p_buffer, k_buffer=k_buffer, rc=rc,zs=zs, nfp=nfp, B0_vals=B0_vals, nphi=nphi, omn=True, order=order, d_over_curvature_cvals=d_over_curvature_cvals, B2c_svals=X2c_svals, B2s_cvals=X2s_cvals, d_over_curvature_spline=d_over_curvature_spline)
+    min_geo_qi_consistency = stel.min_geo_qi_consistency(order = 1)
+    X2c, X2s = evaluate_X2c_X2s_QI(stel, X2s_in=0)
+    d_over_curvature = stel_initial.d/stel_initial.curvature
+    # Construct interpolation for that data
+    x_in = stel_initial.phi
+    y_in = d_over_curvature
+    x_in_periodic = np.append(x_in, 2*np.pi/stel_initial.nfp)
+    y_in_periodic = np.append(y_in, y_in[0])
+    spline_d_over_curv = interpolate.make_interp_spline(x_in_periodic, y_in_periodic, 
+                                                        bc_type = 'periodic', k = N_d_over_curvature_spline)  # Use the same form as in the code (just for consistency)
+    # Now define the control points as in the code, and evaluate the function at those
+    x_new = np.linspace(0,1,N_d_over_curvature_spline)*np.pi/stel_initial.nfp
+    y_new = spline_d_over_curv(x_new)
+    return Qic(omn_method = stel_initial.omn_method, delta=stel_initial.delta,
+               p_buffer=stel_initial.p_buffer, k_buffer=stel_initial.k_buffer,
+               rc=stel_initial.rc,zs=stel_initial.zs, nfp=stel_initial.nfp, B0_vals=stel_initial.B0_vals,
+               nphi=stel.nphi, omn=True, order=order, d_over_curvature_cvals=d_over_curvature_cvals,
+               B2c_svals=X2c, B2s_cvals=X2s, d_over_curvature_spline=y_new)
 
 def print_results(stel,initial_obj=0, Print=True):
     out_txt  = f'from qic import Qic\n'
@@ -112,7 +132,7 @@ def print_results(stel,initial_obj=0, Print=True):
     if Print: print(out_txt)
     return out_txt
 
-def fun_r1(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[], start_time = 0, B01=0.20):
+def fun_r1(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[], start_time = 0, B01=0.18):
     info['Nfeval'] += 1
     new_dofs = stel.get_dofs()
     for count, parameter in enumerate(parameters_to_change):
@@ -127,11 +147,12 @@ def fun_r1(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[], st
           f"min_geo_qi_consistency = {min_geo_qi_consistency:1f}, "
         + f"max(X2c) = {np.max(X2c):1f}, max(X2s) = {np.max(X2s):1f}, "
         + f"B0(1) = {stel.B0_vals[1]:.2f}, "
+        + f"max(elong) = {np.max(stel.elongation):.2f}, "
         + f"J = {objective_function:.2f}")
     obj_array.append(objective_function)
     return objective_function
 
-def fun_r3(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[], start_time = 0, B01=0.20):
+def fun_r3(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[], start_time = 0, B01=0.18):
     info['Nfeval'] += 1
     new_dofs = stel.get_dofs()
     for count, parameter in enumerate(parameters_to_change):
@@ -176,18 +197,18 @@ def fun_r3(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[], st
         print_results(stel, 0, Print=False)
     return objective_function
 
-def obj_r1(stel, min_geo_qi_consistency, X2c, X2s, B0_well_depth=0.20):
+def obj_r1(stel, min_geo_qi_consistency, X2c, X2s, B0_well_depth=0.18):
     return (min_geo_qi_consistency
            + 5e+1*(stel.B0_vals[1]-B0_well_depth)**2
            + 1e-2*np.max(X2c) + 1e-2*np.max(X2s)
-           + 1e-2*np.max(stel.elongation)
+           + 4e-2*np.max(stel.elongation)
     )
 
-def obj_r3(stel, B0_well_depth=0.20):
+def obj_r3(stel, B0_well_depth=0.18):
     weight_B0vals = 3e3
     weight_d_at_0 = 1e-4
     weight_gradB_scale_length = 5e-6
-    weight_elongation = 5e-5
+    weight_elongation = 2e-2
     weight_d = 5e-5
     weight_alpha_diff = 1e-5
     weight_gradgradB_scale_length = 5e-4
@@ -203,6 +224,7 @@ def obj_r3(stel, B0_well_depth=0.20):
          + weight_gradgradB_scale_length*np.sum(stel.grad_grad_B_inverse_scale_length_vs_varphi**2)/stel.nphi
          + weight_r_singularity*np.min(stel.r_singularity)**(-2)
          + weight_elongation*np.sum(stel.elongation**2)/stel.nphi
+         + weight_elongation*np.max(stel.elongation)**2
          + weight_B2c_dev*np.sum(stel.B2cQI_deviation**2 + stel.B2sQI_deviation_max**2 + stel.B20QI_deviation**2)/stel.nphi
          + weight_min_geo_qi_consistency*stel.min_geo_qi_consistency(order = 1)
          + weight_d*np.sum(stel.d**2)/stel.nphi
@@ -214,10 +236,10 @@ def obj_r3(stel, B0_well_depth=0.20):
                        +np.max(stel.Z20)+np.max(stel.Z2c)+np.max(stel.Z2s))**2
          + weight_XYZ3*(np.max(stel.X3c1)+np.max(stel.X3s1)
                       +np.max(stel.Y3c1)+np.max(stel.Y3s1))**2
-         + weight_alpha_diff*np.sum((stel.alpha - stel.alpha_no_buffer)**2)/stel.nphi
+        #  + weight_alpha_diff*np.sum((stel.alpha - stel.alpha_no_buffer)**2)/stel.nphi
     )
 
-def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, B01=0.20, N_d_over_curvature_spline=6, OUT_DIR=os.path.join(this_path,f'qic_nfp1'), show=True):
+def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, B01=0.18, N_d_over_curvature_spline=6, OUT_DIR=os.path.join(this_path,f'qic_nfp1'), show=True):
     if nfp not in [1,2,3]: raise ValueError('nfp should be 1, 2 or 3.')
     if refine_optimization:
         if   nfp==1: stel = optimized_configuration_nfp1(nphi)
@@ -227,12 +249,11 @@ def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, B01=0.20, N_
     start_time = time.time()
     initial_obj = obj_r3(stel)
     print('Initial objective = ', initial_obj)
-    initial_dofs = stel.get_dofs()
     stel.order = 'r1';stel._set_names();stel.calculate()
     ### Define degrees of freedom
-    parameters_to_change = (['B0(1)','rc(2)','zs(2)','rc(4)','zs(4)','zs(6)','zs(8)'])
+    parameters_to_change = (['B0(1)','rc(2)','zs(2)','rc(4)','zs(4)','zs(6)','zs(8)','zs(10)','zs(12)'])
     [parameters_to_change.append(f'd_over_curvature_spline({i})') for i in range(len(stel.d_over_curvature_spline))]
-    dofs = [initial_dofs[stel.names.index(parameter)] for parameter in parameters_to_change]
+    dofs = [stel.get_dofs()[stel.names.index(parameter)] for parameter in parameters_to_change]
     ### Start with r1 optimization for good initial guess
     obj_array = []
     plt.ion();fig, ax = plt.subplots()
@@ -241,6 +262,7 @@ def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, B01=0.20, N_
     ### Do r3 optimization
     stel.order='r3'
     obj_array = []
+    dofs = [stel.get_dofs()[stel.names.index(parameter)] for parameter in parameters_to_change]
     plt.ion();fig, ax = plt.subplots()
     res = minimize(fun_r3, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array, start_time, B01), method='Nelder-Mead', tol=1e-4, options={'maxiter': maxiter, 'maxfev': maxiter, 'disp': True})
     # res = minimize(fun_r3, dofs, args=(stel, parameters_to_change, {'Nfeval':0}, obj_array, start_time, B01), method='BFGS', tol=1e-4, options={'maxiter': maxiter/20, 'maxfev': maxfev/20, 'disp': True})
@@ -278,15 +300,15 @@ def assess_performance(nfp=1, r=0.1, nphi=201, delete_old=False, OUT_DIR=os.path
         os.makedirs(OUT_DIR, exist_ok=True)
     os.chdir(OUT_DIR)
     ## CREATE VMEC INPUT FILE
-    stel.to_vmec(vmec_input, r=r, ntorMax=50, params={'mpol':6, 'ntor': 16, 'ns_array': [51], 'ftol_array':[1e-14], "niter_array":[20000]})
+    stel.to_vmec(vmec_input, r=r, ntorMax=50, params={'mpol':6, 'ntor': 16, 'ns_array': [51, 101], 'ftol_array':[1e-14, 1e-14], "niter_array":[4000,20000]})
     ## RUN VMEC
     from simsopt.util import MpiPartition
     mpi = MpiPartition()
     # try: vmec = Vmec(vmec_output, mpi=mpi)
     vmec = Vmec(vmec_input, mpi=mpi)
-    vmec.indata.ns_array[:1]    = [51]
-    vmec.indata.niter_array[:1] = [20000]
-    vmec.indata.ftol_array[:1]  = [1e-14]
+    vmec.indata.ns_array[:2]    = [51,101]
+    vmec.indata.niter_array[:2] = [4000,20000]
+    vmec.indata.ftol_array[:2]  = [1e-14,1e-14]
     vmec.run()
     ## PLOT VMEC
     try: vmecPlot2.main(file=vmec.output_file, name=f'qic_nfp{nfp}', figures_folder=OUT_DIR)
@@ -364,12 +386,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--nfp", type=int, default=1, required=False)
     parser.add_argument("--nphi", type=int, default=stel.nphi, required=False)
-    parser.add_argument("--B01", type=float, default=0.20, required=False)
+    parser.add_argument("--B01", type=float, default=0.18, required=False)
     parser.add_argument("--niterations", type=int, default=300, required=False)
     parser.add_argument('--assess_performance', action='store_true')
     parser.add_argument('--no-assess_performance', dest='refine_optimized', action='store_false')
     parser.set_defaults(assess_performance=False)
-    parser.add_argument("--r_plot", type=float, default=0.1, required=False)
+    parser.add_argument("--r_plot", type=float, default=0.09, required=False)
     parser.add_argument('--refine_optimization', action='store_true')
     parser.add_argument('--no-refine_optimization', dest='refine_optimized', action='store_false')
     parser.add_argument('--plot', action='store_true')
