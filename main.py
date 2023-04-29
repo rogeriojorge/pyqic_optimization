@@ -224,7 +224,7 @@ def obj_r3(stel, B0_well_depth=0.18):
     return (
          + weight_B0vals*(stel.B0_vals[1]-B0_well_depth)**2 
          + weight_gradB_scale_length*np.sum(stel.inv_L_grad_B**2)
-         + weight_gradgradB_scale_length*np.sum(stel.grad_grad_B_inverse_scale_length_vs_varphi**2)/stel.nphi
+         # + weight_gradgradB_scale_length*np.sum(stel.grad_grad_B_inverse_scale_length_vs_varphi**2)/stel.nphi
          + weight_r_singularity*np.min(stel.r_singularity)**(-2)
          + weight_elongation*np.sum(stel.elongation**2)/stel.nphi
          + weight_elongation*np.max(stel.elongation)**2
@@ -239,7 +239,7 @@ def obj_r3(stel, B0_well_depth=0.18):
                        +np.max(stel.Z20)+np.max(stel.Z2c)+np.max(stel.Z2s))**2
          + weight_XYZ3*(np.max(stel.X3c1)+np.max(stel.X3s1)
                       +np.max(stel.Y3c1)+np.max(stel.Y3s1))**2
-         + weight_alpha_diff*np.sum((stel.alpha - stel.alpha_no_buffer)**2)/stel.nphi
+         # + weight_alpha_diff*np.sum((stel.alpha - stel.alpha_no_buffer)**2)/stel.nphi
     )
 
 def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, B01=0.18, N_d_over_curvature_spline=6, OUT_DIR=os.path.join(this_path,f'qic_nfp1'), show=True):
