@@ -47,7 +47,7 @@ def plot_results(stel, show=False):
 def initial_configuration(nphi=131,order = 'r3',nfp=1, N_d_over_curvature_spline=6):
     # rc      = [ 1.0,0.0,-0.41599809655680886,0.0,0.08291443961920232,0.0,-0.008906891641686355,0.0,0.0,0.0,0.0,0.0,0.0 ]
     # zs      = [ 0.0,0.0,-0.28721210154364263,0.0,0.08425262593215394,0.0,-0.010427621520053335,0.0,-0.0008921610906627226,0.0,-6.357200965811029e-07,0.0,2.7316247301500753e-07 ]
-    # B0_vals = [1.0,0.18]
+    # B0_vals = [1.0,0.20]
     # omn_method ='non-zone-fourier'
     # k_buffer = 1
     # p_buffer = 2
@@ -135,7 +135,7 @@ def print_results(stel,initial_obj=0, Print=True):
     if Print: print(out_txt)
     return out_txt
 
-def fun_r1(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[], start_time = 0, B01=0.18):
+def fun_r1(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[], start_time = 0, B01=0.20):
     info['Nfeval'] += 1
     new_dofs = stel.get_dofs()
     for count, parameter in enumerate(parameters_to_change):
@@ -155,7 +155,7 @@ def fun_r1(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[], st
     obj_array.append(objective_function)
     return objective_function
 
-def fun_r3(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[], start_time = 0, B01=0.18):
+def fun_r3(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[], start_time = 0, B01=0.20):
     info['Nfeval'] += 1
     new_dofs = stel.get_dofs()
     for count, parameter in enumerate(parameters_to_change):
@@ -200,14 +200,14 @@ def fun_r3(dofs, stel, parameters_to_change, info={'Nfeval':0}, obj_array=[], st
         print_results(stel, 0, Print=False)
     return objective_function
 
-def obj_r1(stel, min_geo_qi_consistency, X2c, X2s, B0_well_depth=0.18):
+def obj_r1(stel, min_geo_qi_consistency, X2c, X2s, B0_well_depth=0.20):
     return (min_geo_qi_consistency
            + 5e+1*(stel.B0_vals[1]-B0_well_depth)**2
            + 1e-2*np.max(X2c) + 1e-2*np.max(X2s)
            + 4e-2*np.max(stel.elongation)
     )
 
-def obj_r3(stel, B0_well_depth=0.18):
+def obj_r3(stel, B0_well_depth=0.20):
     weight_B0vals = 3e3
     weight_d_at_0 = 1e-4
     weight_gradB_scale_length = 5e-6
@@ -223,7 +223,7 @@ def obj_r3(stel, B0_well_depth=0.18):
     weight_r_singularity = 2e-2
     return (
          + weight_B0vals*(stel.B0_vals[1]-B0_well_depth)**2 
-         + weight_gradB_scale_length*np.sum(stel.inv_L_grad_B**2)
+         # + weight_gradB_scale_length*np.sum(stel.inv_L_grad_B**2)
          # + weight_gradgradB_scale_length*np.sum(stel.grad_grad_B_inverse_scale_length_vs_varphi**2)/stel.nphi
          + weight_r_singularity*np.min(stel.r_singularity)**(-2)
          + weight_elongation*np.sum(stel.elongation**2)/stel.nphi
@@ -231,9 +231,9 @@ def obj_r3(stel, B0_well_depth=0.18):
          + weight_B2c_dev*np.sum(stel.B2cQI_deviation**2 + stel.B2sQI_deviation_max**2 + stel.B20QI_deviation**2)/stel.nphi
          + weight_min_geo_qi_consistency*stel.min_geo_qi_consistency(order = 1)
          + weight_d*np.sum(stel.d**2)/stel.nphi
-         + weight_d_at_0*stel.d_curvature_d_varphi_at_0**2
-         + weight_d_at_0*stel.d_d_d_varphi_at_0**2
-         + weight_B20cs*np.sum(stel.B20**2 + stel.B2c**2 + stel.B2s**2)/stel.nphi
+         # + weight_d_at_0*stel.d_curvature_d_varphi_at_0**2
+         # + weight_d_at_0*stel.d_d_d_varphi_at_0**2
+         # + weight_B20cs*np.sum(stel.B20**2 + stel.B2c**2 + stel.B2s**2)/stel.nphi
          + weight_XYZ2*(np.max(stel.X20)+np.max(stel.X2c)+np.max(stel.X2s)
                        +np.max(stel.Y20)+np.max(stel.Y2c)+np.max(stel.Y2s)
                        +np.max(stel.Z20)+np.max(stel.Z2c)+np.max(stel.Z2s))**2
@@ -242,7 +242,7 @@ def obj_r3(stel, B0_well_depth=0.18):
          # + weight_alpha_diff*np.sum((stel.alpha - stel.alpha_no_buffer)**2)/stel.nphi
     )
 
-def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, B01=0.18, N_d_over_curvature_spline=6, OUT_DIR=os.path.join(this_path,f'qic_nfp1'), show=True):
+def main(nfp=1, refine_optimization=False, nphi=91, maxiter = 3000, B01=0.20, N_d_over_curvature_spline=6, OUT_DIR=os.path.join(this_path,f'qic_nfp1'), show=True):
     if nfp not in [1,2,3]: raise ValueError('nfp should be 1, 2 or 3.')
     if refine_optimization:
         if   nfp==1: stel = optimized_configuration_nfp1(nphi)
@@ -303,15 +303,16 @@ def assess_performance(nfp=1, r=0.1, nphi=201, delete_old=False, OUT_DIR=os.path
         os.makedirs(OUT_DIR, exist_ok=True)
     os.chdir(OUT_DIR)
     ## CREATE VMEC INPUT FILE
-    stel.to_vmec(vmec_input, r=r, ntorMax=50, params={'mpol':6, 'ntor': 16, 'ns_array': [51, 101], 'ftol_array':[1e-14, 1e-14], "niter_array":[4000,20000]})
+    stel.to_vmec(vmec_input, r=r, ntorMax=31, ntheta=19, params={'mpol':9, 'ntor': 91, 'ns_array': [71], 'ftol_array':[1e-13],
+                                                                 "niter_array":[7000],'mpol_vmec':4,'ntor_vmec':31})
     ## RUN VMEC
     from simsopt.util import MpiPartition
     mpi = MpiPartition()
     # try: vmec = Vmec(vmec_output, mpi=mpi)
     vmec = Vmec(vmec_input, mpi=mpi)
-    vmec.indata.ns_array[:2]    = [51,101]
-    vmec.indata.niter_array[:2] = [4000,20000]
-    vmec.indata.ftol_array[:2]  = [1e-14,1e-14]
+    # vmec.indata.ns_array[:2]    = [51,101]
+    # vmec.indata.niter_array[:2] = [4000,20000]
+    # vmec.indata.ftol_array[:2]  = [1e-14,1e-14]
     vmec.run()
     ## PLOT VMEC
     try: vmecPlot2.main(file=vmec.output_file, name=f'qic_nfp{nfp}', figures_folder=OUT_DIR)
@@ -322,8 +323,6 @@ def assess_performance(nfp=1, r=0.1, nphi=201, delete_old=False, OUT_DIR=os.path
     booz_surfaces = np.linspace(0,1,boozxform_nsurfaces,endpoint=False)
     b1.register(booz_surfaces)
     b1.run()
-    b1.bx.write_boozmn(booz_file)
-    ## PLOT BOOZ_XFORM
     fig = plt.figure(); bx.surfplot(b1.bx, js=1,  fill=False, ncontours=35)
     plt.savefig(os.path.join(OUT_DIR, f"Boozxform_surfplot_1_qic_nfp{nfp}.pdf"), bbox_inches = 'tight', pad_inches = 0); plt.close()
     fig = plt.figure(); bx.surfplot(b1.bx, js=int(boozxform_nsurfaces/2), fill=False, ncontours=35)
@@ -334,6 +333,7 @@ def assess_performance(nfp=1, r=0.1, nphi=201, delete_old=False, OUT_DIR=os.path
     plt.savefig(os.path.join(OUT_DIR, f"Boozxform_symplot_qic_nfp{nfp}.pdf"), bbox_inches = 'tight', pad_inches = 0); plt.close()
     fig = plt.figure(); bx.modeplot(b1.bx, sqrts=True); plt.xlabel(r'$s=\psi/\psi_b$')
     plt.savefig(os.path.join(OUT_DIR, f"Boozxform_modeplot_qic_nfp{nfp}.pdf"), bbox_inches = 'tight', pad_inches = 0); plt.close()
+    b1.bx.write_boozmn(booz_file)
     ## RUN NEO
     shutil.copyfile(neo_in_file,os.path.join(OUT_DIR,'neo_in.out'))
     bashCommand = f'{neo_executable} out'
@@ -389,7 +389,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--nfp", type=int, default=1, required=False)
     parser.add_argument("--nphi", type=int, default=stel.nphi, required=False)
-    parser.add_argument("--B01", type=float, default=0.18, required=False)
+    parser.add_argument("--B01", type=float, default=0.20, required=False)
     parser.add_argument("--niterations", type=int, default=300, required=False)
     parser.add_argument('--assess_performance', action='store_true')
     parser.add_argument('--no-assess_performance', dest='refine_optimized', action='store_false')
